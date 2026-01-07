@@ -6,7 +6,6 @@ import Home from './components/Home';
 import AddExpense from './components/AddExpense';
 import HouseholdManagement from './components/HouseholdManagement';
 import ExportData from './components/ExportData';
-import PermissionScreen from './components/PermissionScreen';
 import Stats from './components/Stats';
 import Transactions from './components/Transactions';
 import Auth from './components/Auth';
@@ -18,16 +17,6 @@ const App: React.FC = () => {
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [initialized, setInitialized] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
 
   useEffect(() => {
     const savedSession = localStorage.getItem('financas_pro_session');
@@ -35,7 +24,7 @@ const App: React.FC = () => {
       try {
         const user = JSON.parse(savedSession);
         setCurrentUser(user);
-        const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
+        const userData = localStorage.getItem(`fin_data_${user.email}`);
         if (userData) setData(JSON.parse(userData));
       } catch (e) { console.error(e); }
     }
@@ -44,113 +33,65 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (initialized && currentUser) {
-      localStorage.setItem(`financas_pro_data_${currentUser.email}`, JSON.stringify(data));
+      localStorage.setItem(`fin_data_${currentUser.email}`, JSON.stringify(data));
     }
   }, [data, initialized, currentUser]);
 
-  const handleLogin = useCallback((user: UserAccount) => {
+  const handleLogin = (user: UserAccount) => {
     setCurrentUser(user);
     localStorage.setItem('financas_pro_session', JSON.stringify(user));
-    localStorage.setItem('financas_pro_last_email', user.email);
-    const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
+    const userData = localStorage.getItem(`fin_data_${user.email}`);
     if (userData) setData(JSON.parse(userData));
-    else {
-      const newData = { ...INITIAL_DATA, user, expenses: [], balance: 0 };
-      setData(newData);
-    }
+    else setData({ ...INITIAL_DATA, user, expenses: [], balance: 0 });
     setView('home');
-  }, []);
+  };
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('financas_pro_session');
-    setCurrentUser(null);
-    setView('auth');
-  }, []);
-
-  const handleUpdateUser = useCallback((updatedUser: UserAccount) => {
-    setCurrentUser(updatedUser);
-    localStorage.setItem('financas_pro_session', JSON.stringify(updatedUser));
-    setData(prev => ({ ...prev, user: updatedUser }));
-  }, []);
-
-  const saveExpense = useCallback((expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
-    if (editingExpense) {
-      setData(prev => {
-        const oldAmount = prev.expenses.find(e => e.id === editingExpense.id)?.amount || 0;
-        const newExpenses = prev.expenses.map(e => 
-          e.id === editingExpense.id ? { ...expenseData, id: e.id, timestamp: e.timestamp } : e
-        );
-        return {
-          ...prev,
-          expenses: newExpenses,
-          balance: prev.balance + oldAmount - expenseData.amount,
-          sources: prev.sources.includes(expenseData.source) ? prev.sources : [...prev.sources, expenseData.source]
-        };
-      });
-    } else {
-      const newExpense: Expense = {
-        ...expenseData,
-        id: Math.random().toString(36).substr(2, 9),
-        timestamp: Date.now()
-      };
-      setData(prev => ({
-        ...prev,
-        expenses: [newExpense, ...prev.expenses],
-        balance: prev.balance - newExpense.amount,
-        sources: prev.sources.includes(expenseData.source) ? prev.sources : [...prev.sources, expenseData.source]
-      }));
-    }
-    setEditingExpense(undefined);
+  const saveExpense = (expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
+    const newExpense = { ...expenseData, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() };
+    setData(prev => ({
+      ...prev,
+      expenses: [newExpense, ...prev.expenses],
+      balance: prev.balance - newExpense.amount,
+      sources: prev.sources.includes(expenseData.source) ? prev.sources : [...prev.sources, expenseData.source]
+    }));
     setView('home');
-  }, [editingExpense]);
-
-  const deleteExpense = useCallback((id: string) => {
-    setData(prev => {
-      const amount = prev.expenses.find(e => e.id === id)?.amount || 0;
-      return { ...prev, expenses: prev.expenses.filter(e => e.id !== id), balance: prev.balance + amount };
-    });
-  }, []);
+  };
 
   const renderView = () => {
     if (view === 'auth') return <Auth onLogin={handleLogin} />;
     switch (view) {
-      case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />;
-      case 'add-expense': return <AddExpense sources={data.sources} members={data.members} onSave={saveExpense} onBack={() => { setView('home'); setEditingExpense(undefined); }} editingExpense={editingExpense} />;
+      case 'home': return <Home data={data} setView={setView} onLogout={() => setView('auth')} onEdit={()=>{}} onDelete={()=>{}} onUpdateUser={()=>{}} deferredPrompt={null} setDeferredPrompt={()=>{}} />;
+      case 'add-expense': return <AddExpense sources={data.sources} members={data.members} onSave={saveExpense} onBack={() => setView('home')} />;
       case 'household': return <HouseholdManagement members={data.members} onUpdate={(m) => setData(prev => ({ ...prev, members: m }))} onBack={() => setView('home')} />;
       case 'export': return <ExportData expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'stats': return <Stats expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
-      case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} />;
-      case 'settings': return <Settings user={data.user} onUpdateUser={handleUpdateUser} onBack={() => setView('home')} />;
-      default: return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />;
+      case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={()=>{}} onDelete={()=>{}} />;
+      case 'settings': return <Settings user={data.user} onUpdateUser={()=>{}} onBack={() => setView('home')} />;
+      default: return <Home data={data} setView={setView} onLogout={() => setView('auth')} onEdit={()=>{}} onDelete={()=>{}} onUpdateUser={()=>{}} deferredPrompt={null} setDeferredPrompt={()=>{}} />;
     }
   };
 
   return (
-    <div className="max-w-md mx-auto h-screen relative bg-bg-dark overflow-hidden flex flex-col border-x border-white/5">
-      <div className="flex-1 overflow-hidden relative">
-        {renderView()}
-      </div>
-      
-      {view !== 'auth' && view !== 'permission' && view !== 'add-expense' && (
-        <nav className="shrink-0 bg-bg-dark border-t border-white/5 pb-10 pt-4 z-[999] relative">
-          <div className="flex justify-around items-center px-2">
-            <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">home</span>
-              <span className="text-[10px] font-bold uppercase pointer-events-none">Início</span>
-            </button>
-            <button onClick={() => setView('transactions')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">receipt_long</span>
-              <span className="text-[10px] font-bold uppercase pointer-events-none">Extrato</span>
-            </button>
-            <button onClick={() => setView('stats')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">monitoring</span>
-              <span className="text-[10px] font-bold uppercase pointer-events-none">Gráfico</span>
-            </button>
-            <button onClick={() => setView('household')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">group</span>
-              <span className="text-[10px] font-bold uppercase pointer-events-none">Agregado</span>
-            </button>
-          </div>
+    <div className="max-w-md mx-auto h-screen bg-bg-dark overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden relative">{renderView()}</div>
+      {view !== 'auth' && (
+        <nav className="shrink-0 bg-bg-dark border-t border-white/5 flex justify-around items-center z-[999] relative min-h-[70px]">
+          <button onClick={() => setView('home')} className={`flex-1 py-4 flex flex-col items-center btn-active ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
+            <span className="material-symbols-outlined text-3xl">home</span>
+            <span className="text-[10px] font-bold">INÍCIO</span>
+          </button>
+          <button onClick={() => setView('transactions')} className={`flex-1 py-4 flex flex-col items-center btn-active ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}>
+            <span className="material-symbols-outlined text-3xl">receipt_long</span>
+            <span className="text-[10px] font-bold">EXTRATO</span>
+          </button>
+          <button onClick={() => setView('stats')} className={`flex-1 py-4 flex flex-col items-center btn-active ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}>
+            <span className="material-symbols-outlined text-3xl">monitoring</span>
+            <span className="text-[10px] font-bold">GRÁFICO</span>
+          </button>
+          <button onClick={() => setView('household')} className={`flex-1 py-4 flex flex-col items-center btn-active ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}>
+            <span className="material-symbols-outlined text-3xl">group</span>
+            <span className="text-[10px] font-bold">AGREGADO</span>
+          </button>
         </nav>
       )}
     </div>
