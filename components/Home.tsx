@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppData, View, Expense } from '../types';
+import { AppData, View, Expense, UserAccount } from '../types';
 
 interface HomeProps {
   data: AppData;
@@ -8,20 +8,22 @@ interface HomeProps {
   onLogout: () => void;
   onEdit: (exp: Expense) => void;
   onDelete: (id: string) => void;
+  onUpdateUser: (u: UserAccount) => void;
 }
 
-const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete }) => {
+const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, onUpdateUser }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('financas_pro_last_email', data.user.email);
-    if (!data.user.biometricEnabled) {
+    // Mostrar prompt de biometria se o navegador suportar e ainda não estiver ativo
+    if (!data.user.biometricEnabled && window.PublicKeyCredential) {
       const timer = setTimeout(() => setShowBiometricPrompt(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [data.user]);
+  }, [data.user.biometricEnabled, data.user.email]);
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -37,14 +39,12 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete }
     if (outcome === 'accepted') setDeferredPrompt(null);
   };
 
-  const enableBiometrics = () => {
-    const storedUsers = JSON.parse(localStorage.getItem('financas_pro_users') || '[]');
-    const updatedUsers = storedUsers.map((u: any) => 
-      u.email === data.user.email ? { ...u, biometricEnabled: true } : u
-    );
-    localStorage.setItem('financas_pro_users', JSON.stringify(updatedUsers));
+  const enableBiometrics = async () => {
+    // Simulação de registo biométrico
+    // Em produção, aqui chamaríamos navigator.credentials.create(...)
+    onUpdateUser({ ...data.user, biometricEnabled: true });
     setShowBiometricPrompt(false);
-    alert("Biometria ativada com sucesso!");
+    alert("Acesso com Impressão Digital ativado com sucesso para esta conta!");
   };
 
   const currentMonth = "Janeiro 2025";

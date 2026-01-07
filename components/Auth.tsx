@@ -12,6 +12,7 @@ const Auth: React.FC<Props> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [canBiometric, setCanBiometric] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   useEffect(() => {
     // Verificar se o browser suporta WebAuthn (Biometria)
@@ -29,7 +30,12 @@ const Auth: React.FC<Props> = ({ onLogin }) => {
     if (isLogin) {
       const user = storedUsers.find((u: any) => u.email === email && u.password === password);
       if (user) {
-        onLogin({ email: user.email, name: user.name, avatar: `https://picsum.photos/seed/${user.email}/200`, biometricEnabled: user.biometricEnabled });
+        onLogin({ 
+          email: user.email, 
+          name: user.name, 
+          avatar: `https://picsum.photos/seed/${user.email}/200`, 
+          biometricEnabled: user.biometricEnabled 
+        });
       } else {
         alert('Credenciais inválidas');
       }
@@ -46,33 +52,54 @@ const Auth: React.FC<Props> = ({ onLogin }) => {
   };
 
   const handleBiometricLogin = async () => {
-    // Simulação de fluxo WebAuthn
-    // Num cenário real, usaríamos navigator.credentials.get()
     const lastUserEmail = localStorage.getItem('financas_pro_last_email');
     if (!lastUserEmail) {
-      alert("Por favor, faça o primeiro login com palavra-passe para ativar a biometria.");
+      alert("Por favor, faça primeiro um login manual para associar a sua conta a este dispositivo.");
       return;
     }
 
     const storedUsers = JSON.parse(localStorage.getItem('financas_pro_users') || '[]');
-    const user = storedUsers.find((u: any) => u.email === lastUserEmail && u.biometricEnabled);
+    const user = storedUsers.find((u: any) => u.email === lastUserEmail);
 
-    if (!user) {
-      alert("Biometria não ativada para este utilizador.");
+    if (!user || !user.biometricEnabled) {
+      alert("O acesso biométrico não está ativo para a última conta utilizada (" + lastUserEmail + "). Ative-o nas definições após o login manual.");
       return;
     }
 
-    // "Pressionar o dedo" (Simulado com um delay)
+    setIsAuthenticating(true);
+    
     try {
-      // Aqui o browser abriria o diálogo nativo de impressão digital
-      onLogin({ email: user.email, name: user.name, avatar: `https://picsum.photos/seed/${user.email}/200`, biometricEnabled: true });
+      // Simulação de delay para leitura da impressão digital
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Em produção, usaríamos navigator.credentials.get()
+      onLogin({ 
+        email: user.email, 
+        name: user.name, 
+        avatar: `https://picsum.photos/seed/${user.email}/200`, 
+        biometricEnabled: true 
+      });
     } catch (err) {
-      alert("Falha na autenticação biométrica.");
+      alert("Falha na leitura da impressão digital.");
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
   return (
-    <div className="h-full flex flex-col bg-bg-dark px-8 justify-center animate-in fade-in duration-500">
+    <div className="h-full flex flex-col bg-bg-dark px-8 justify-center animate-in fade-in duration-500 relative">
+      {isAuthenticating && (
+        <div className="absolute inset-0 z-50 bg-bg-dark/90 backdrop-blur-md flex flex-col items-center justify-center gap-6 animate-in fade-in duration-300">
+          <div className="size-24 rounded-full border-4 border-primary/20 flex items-center justify-center animate-pulse">
+            <span className="material-symbols-outlined text-6xl text-primary animate-bounce">fingerprint</span>
+          </div>
+          <div className="text-center">
+            <h3 className="text-xl font-bold">Autenticando...</h3>
+            <p className="text-gray-500 text-sm mt-1">Coloque o seu dedo no sensor</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col items-center mb-10">
         <div className="size-20 bg-primary/20 rounded-3xl flex items-center justify-center mb-4 border border-primary/20 shadow-2xl shadow-primary/10">
           <span className="material-symbols-outlined text-primary text-4xl">payments</span>

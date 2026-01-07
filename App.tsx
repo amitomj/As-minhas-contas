@@ -74,6 +74,19 @@ const App: React.FC = () => {
     setView('auth');
   }, []);
 
+  const handleUpdateUser = useCallback((updatedUser: UserAccount) => {
+    setCurrentUser(updatedUser);
+    localStorage.setItem('financas_pro_session', JSON.stringify(updatedUser));
+    setData(prev => ({ ...prev, user: updatedUser }));
+    
+    // Também atualizar na lista global de utilizadores para logins futuros
+    const storedUsers = JSON.parse(localStorage.getItem('financas_pro_users') || '[]');
+    const updatedUsers = storedUsers.map((u: any) => 
+      u.email === updatedUser.email ? { ...u, ...updatedUser } : u
+    );
+    localStorage.setItem('financas_pro_users', JSON.stringify(updatedUsers));
+  }, []);
+
   const grantPermission = useCallback(() => {
     localStorage.setItem('financas_pro_permission', 'granted');
     setView('home');
@@ -137,7 +150,7 @@ const App: React.FC = () => {
     
     switch (view) {
       case 'permission': return <PermissionScreen onGrant={grantPermission} />;
-      case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} />;
+      case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} />;
       case 'add-expense': return (
         <AddExpense 
           sources={data.sources} 
@@ -151,7 +164,7 @@ const App: React.FC = () => {
       case 'export': return <ExportData expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'stats': return <Stats expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={startEditExpense} onDelete={deleteExpense} />;
-      default: return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} />;
+      default: return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} />;
     }
   };
 
