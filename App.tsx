@@ -18,13 +18,20 @@ const App: React.FC = () => {
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [initialized, setInitialized] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
-  // Inicialização robusta: Começa sempre em 'auth'
+  // Capturar evento de instalação globalmente para não o perder
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   useEffect(() => {
     const savedSession = localStorage.getItem('financas_pro_session');
-    
-    // Mesmo que haja sessão, mostramos Auth primeiro (pode ser o ecrã de PIN)
-    // Se o utilizador quiser que seja automático, a Auth lida com isso se houver PIN
     if (savedSession) {
       try {
         const user = JSON.parse(savedSession);
@@ -72,12 +79,6 @@ const App: React.FC = () => {
     setCurrentUser(updatedUser);
     localStorage.setItem('financas_pro_session', JSON.stringify(updatedUser));
     setData(prev => ({ ...prev, user: updatedUser }));
-    
-    const storedUsers = JSON.parse(localStorage.getItem('financas_pro_users') || '[]');
-    const updatedUsers = storedUsers.map((u: any) => 
-      u.email === updatedUser.email ? { ...u, ...updatedUser } : u
-    );
-    localStorage.setItem('financas_pro_users', JSON.stringify(updatedUsers));
   }, []);
 
   const grantPermission = useCallback(() => {
@@ -117,48 +118,29 @@ const App: React.FC = () => {
   }, [editingExpense]);
 
   const deleteExpense = useCallback((id: string) => {
-    if (confirm("Tem certeza que deseja eliminar esta despesa?")) {
-      setData(prev => {
-        const amount = prev.expenses.find(e => e.id === id)?.amount || 0;
-        return {
-          ...prev,
-          expenses: prev.expenses.filter(e => e.id !== id),
-          balance: prev.balance + amount
-        };
-      });
-    }
+    setData(prev => {
+      const amount = prev.expenses.find(e => e.id === id)?.amount || 0;
+      return {
+        ...prev,
+        expenses: prev.expenses.filter(e => e.id !== id),
+        balance: prev.balance + amount
+      };
+    });
   }, []);
-
-  const updateMembers = useCallback((members: Member[]) => {
-    setData(prev => ({ ...prev, members }));
-  }, []);
-
-  const startEditExpense = (expense: Expense) => {
-    setEditingExpense(expense);
-    setView('add-expense');
-  };
 
   const renderView = () => {
     if (view === 'auth') return <Auth onLogin={handleLogin} />;
     
     switch (view) {
       case 'permission': return <PermissionScreen onGrant={grantPermission} />;
-      case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} />;
-      case 'add-expense': return (
-        <AddExpense 
-          sources={data.sources} 
-          members={data.members} 
-          onSave={saveExpense} 
-          onBack={() => { setView('home'); setEditingExpense(undefined); }} 
-          editingExpense={editingExpense}
-        />
-      );
-      case 'household': return <HouseholdManagement members={data.members} onUpdate={updateMembers} onBack={() => setView('home')} />;
+      case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />;
+      case 'add-expense': return <AddExpense sources={data.sources} members={data.members} onSave={saveExpense} onBack={() => { setView('home'); setEditingExpense(undefined); }} editingExpense={editingExpense} />;
+      case 'household': return <HouseholdManagement members={data.members} onUpdate={(m) => setData(prev => ({ ...prev, members: m }))} onBack={() => setView('home')} />;
       case 'export': return <ExportData expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'stats': return <Stats expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
-      case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={startEditExpense} onDelete={deleteExpense} />;
+      case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} />;
       case 'settings': return <Settings user={data.user} onUpdateUser={handleUpdateUser} onBack={() => setView('home')} />;
-      default: return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} />;
+      default: return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />;
     }
   };
 
@@ -168,24 +150,36 @@ const App: React.FC = () => {
         {renderView()}
       </div>
       
-      {view !== 'permission' && view !== 'add-expense' && view !== 'auth' && (
-        <nav className="shrink-0 bg-bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-8 pt-3 z-[60]">
+      {view !== 'auth' && view !== 'permission' && view !== 'add-expense' && (
+        <nav className="shrink-0 bg-bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-8 pt-3 z-[100]">
           <div className="flex justify-around items-center px-4">
-            <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 transition-colors ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className={`material-symbols-outlined text-[28px] ${view === 'home' ? 'fill-1' : ''}`}>home</span>
-              <span className="text-[10px] font-semibold">Início</span>
+            <button 
+              onClick={(e) => { e.preventDefault(); setView('home'); }} 
+              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}
+            >
+              <span className="material-symbols-outlined text-[28px]">home</span>
+              <span className="text-[10px] font-bold">Início</span>
             </button>
-            <button onClick={() => setView('transactions')} className={`flex flex-col items-center gap-1 transition-colors ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className={`material-symbols-outlined text-[28px] ${view === 'transactions' ? 'fill-1' : ''}`}>receipt_long</span>
-              <span className="text-[10px] font-semibold">Extrato</span>
+            <button 
+              onClick={(e) => { e.preventDefault(); setView('transactions'); }} 
+              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}
+            >
+              <span className="material-symbols-outlined text-[28px]">receipt_long</span>
+              <span className="text-[10px] font-bold">Extrato</span>
             </button>
-            <button onClick={() => setView('stats')} className={`flex flex-col items-center gap-1 transition-colors ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className={`material-symbols-outlined text-[28px] ${view === 'stats' ? 'fill-1' : ''}`}>analytics</span>
-              <span className="text-[10px] font-semibold">Gráficos</span>
+            <button 
+              onClick={(e) => { e.preventDefault(); setView('stats'); }} 
+              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}
+            >
+              <span className="material-symbols-outlined text-[28px]">monitoring</span>
+              <span className="text-[10px] font-bold">Gráfico</span>
             </button>
-            <button onClick={() => setView('household')} className={`flex flex-col items-center gap-1 transition-colors ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className={`material-symbols-outlined text-[28px] ${view === 'household' ? 'fill-1' : ''}`}>group</span>
-              <span className="text-[10px] font-semibold">Agregado</span>
+            <button 
+              onClick={(e) => { e.preventDefault(); setView('household'); }} 
+              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}
+            >
+              <span className="material-symbols-outlined text-[28px]">group</span>
+              <span className="text-[10px] font-bold">Agregado</span>
             </button>
           </div>
         </nav>
