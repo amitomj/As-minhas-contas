@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [initialized, setInitialized] = useState(false);
 
+  // Inicialização e recuperação de sessão
   useEffect(() => {
     const savedSession = localStorage.getItem('financas_pro_session');
     const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
@@ -31,6 +32,10 @@ const App: React.FC = () => {
           setData(JSON.parse(userData));
           setView(hasPermission ? 'home' : 'permission');
         } else {
+          // Caso de segurança: utilizador logado mas sem dados, cria-os
+          const newData = { ...INITIAL_DATA, user };
+          setData(newData);
+          localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
           setView('permission');
         }
       } catch (e) {
@@ -42,6 +47,7 @@ const App: React.FC = () => {
     setInitialized(true);
   }, []);
 
+  // "Salvaguarda Automática": Sincroniza o estado com o "Ficheiro JSON" no localStorage
   useEffect(() => {
     if (initialized && currentUser) {
       localStorage.setItem(`financas_pro_data_${currentUser.email}`, JSON.stringify(data));
@@ -54,10 +60,17 @@ const App: React.FC = () => {
     
     const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
     if (userData) {
+      // Login de utilizador existente: carrega os dados dele
       setData(JSON.parse(userData));
     } else {
-      // REGISTO: Se não existe JSON, cria o estado inicial baseado no template
-      const newData = { ...INITIAL_DATA, user, expenses: [], balance: 0 };
+      // Registo de novo utilizador: cria o "JSON" inicial personalizado
+      const newData = { 
+        ...INITIAL_DATA, 
+        user, 
+        expenses: [], 
+        balance: 0,
+        members: [] // Começa com agregado vazio para o novo utilizador configurar
+      };
       setData(newData);
       localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
     }
