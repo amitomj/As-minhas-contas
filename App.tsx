@@ -12,36 +12,42 @@ import Transactions from './components/Transactions.tsx';
 import Auth from './components/Auth.tsx';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<View>('permission');
+  const [view, setView] = useState<View>('auth');
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [initialized, setInitialized] = useState(false);
 
-  // Load persistence logic
+  // Lógica de carregamento inicial
   useEffect(() => {
+    const savedSession = localStorage.getItem('financas_pro_session');
     const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
-    const savedUser = localStorage.getItem('financas_pro_session');
     
-    if (savedUser) {
+    if (savedSession) {
       try {
-        const user = JSON.parse(savedUser);
+        const user = JSON.parse(savedSession);
         setCurrentUser(user);
+        
+        // Tenta carregar o "JSON" específico deste utilizador
         const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
         if (userData) {
           setData(JSON.parse(userData));
+          // Se tem dados e permissão, vai para a Home. Se não tem permissão, vai para ecrã de permissão.
+          setView(hasPermission ? 'home' : 'permission');
+        } else {
+          // Utilizador existe mas não tem ficheiro de dados (erro raro), vai para permissão
+          setView('permission');
         }
-        setView(hasPermission ? 'home' : 'permission');
       } catch (e) {
-        console.error("Erro ao carregar sessão:", e);
         setView('auth');
       }
     } else {
+      // Primeira vez absoluta: vai para Registo/Login
       setView('auth');
     }
     setInitialized(true);
   }, []);
 
-  // Sync data to "JSON" (localStorage)
+  // Sincroniza dados com o "Ficheiro JSON" (localStorage) sempre que mudam
   useEffect(() => {
     if (initialized && currentUser) {
       localStorage.setItem(`financas_pro_data_${currentUser.email}`, JSON.stringify(data));
@@ -51,14 +57,18 @@ const App: React.FC = () => {
   const handleLogin = useCallback((user: UserAccount) => {
     setCurrentUser(user);
     localStorage.setItem('financas_pro_session', JSON.stringify(user));
+    
     const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
     if (userData) {
       setData(JSON.parse(userData));
     } else {
+      // Se é um novo registo, inicializa os dados com o template
       const newData = { ...INITIAL_DATA, user };
       setData(newData);
       localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
     }
+
+    // Após login/registo, verifica se já deu permissão de pasta no passado
     const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
     setView(hasPermission ? 'home' : 'permission');
   }, []);
