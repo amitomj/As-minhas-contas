@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, AppData, Expense, Member, UserAccount } from './types.ts';
-import { INITIAL_DATA } from './constants.tsx';
-import Home from './components/Home.tsx';
-import AddExpense from './components/AddExpense.tsx';
-import HouseholdManagement from './components/HouseholdManagement.tsx';
-import ExportData from './components/ExportData.tsx';
-import PermissionScreen from './components/PermissionScreen.tsx';
-import Stats from './components/Stats.tsx';
-import Transactions from './components/Transactions.tsx';
-import Auth from './components/Auth.tsx';
+import { View, AppData, Expense, Member, UserAccount } from './types';
+import { INITIAL_DATA } from './constants';
+import Home from './components/Home';
+import AddExpense from './components/AddExpense';
+import HouseholdManagement from './components/HouseholdManagement';
+import ExportData from './components/ExportData';
+import PermissionScreen from './components/PermissionScreen';
+import Stats from './components/Stats';
+import Transactions from './components/Transactions';
+import Auth from './components/Auth';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('auth');
@@ -17,7 +17,6 @@ const App: React.FC = () => {
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [initialized, setInitialized] = useState(false);
 
-  // Lógica de carregamento inicial
   useEffect(() => {
     const savedSession = localStorage.getItem('financas_pro_session');
     const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
@@ -27,27 +26,22 @@ const App: React.FC = () => {
         const user = JSON.parse(savedSession);
         setCurrentUser(user);
         
-        // Tenta carregar o "JSON" específico deste utilizador
         const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
         if (userData) {
           setData(JSON.parse(userData));
-          // Se tem dados e permissão, vai para a Home. Se não tem permissão, vai para ecrã de permissão.
           setView(hasPermission ? 'home' : 'permission');
         } else {
-          // Utilizador existe mas não tem ficheiro de dados (erro raro), vai para permissão
           setView('permission');
         }
       } catch (e) {
         setView('auth');
       }
     } else {
-      // Primeira vez absoluta: vai para Registo/Login
       setView('auth');
     }
     setInitialized(true);
   }, []);
 
-  // Sincroniza dados com o "Ficheiro JSON" (localStorage) sempre que mudam
   useEffect(() => {
     if (initialized && currentUser) {
       localStorage.setItem(`financas_pro_data_${currentUser.email}`, JSON.stringify(data));
@@ -62,13 +56,12 @@ const App: React.FC = () => {
     if (userData) {
       setData(JSON.parse(userData));
     } else {
-      // Se é um novo registo, inicializa os dados com o template
-      const newData = { ...INITIAL_DATA, user };
+      // REGISTO: Se não existe JSON, cria o estado inicial baseado no template
+      const newData = { ...INITIAL_DATA, user, expenses: [], balance: 0 };
       setData(newData);
       localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
     }
 
-    // Após login/registo, verifica se já deu permissão de pasta no passado
     const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
     setView(hasPermission ? 'home' : 'permission');
   }, []);

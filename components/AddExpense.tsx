@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Member } from '../types.ts';
+import { Member } from '../types';
 
 interface AddExpenseProps {
   sources: string[];
@@ -33,16 +33,13 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
     
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.toLowerCase();
-      console.log('Transcrição:', transcript);
       
-      // Heurística melhorada para valores
       const valueMatch = transcript.match(/(\d+(?:[.,]\d+)?)/);
       if (valueMatch) {
         const val = valueMatch[1].replace(',', '.');
         setAmount(val);
       }
       
-      // Procura por fontes existentes
       const foundSource = sources.find(s => transcript.includes(s.toLowerCase()));
       if (foundSource) {
         setSource(foundSource);
@@ -79,7 +76,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
       </header>
 
       <main className="flex-1 space-y-8 pt-6">
-        {/* Amount Hero */}
         <div className="flex flex-col items-center gap-2">
           <span className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Valor da Transação</span>
           <div className="flex items-center gap-4">
@@ -103,7 +99,6 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
           </div>
         </div>
 
-        {/* Fields Card */}
         <div className="space-y-6 px-2">
           <div className="bg-surface-dark rounded-[2rem] p-6 border border-white/5 space-y-6">
             <div className="flex items-center justify-between">
