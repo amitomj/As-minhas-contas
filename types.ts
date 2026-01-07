@@ -11,7 +11,7 @@ export interface Expense {
   amount: number;
   date: string;
   source: string;
-  memberIds: string[]; // Mudado para array de strings para permitir múltiplos membros
+  memberIds: string[];
   notes?: string;
   timestamp: number;
 }
@@ -21,6 +21,7 @@ export interface UserAccount {
   password?: string;
   name: string;
   avatar: string;
+  biometricEnabled?: boolean;
 }
 
 export interface AppData {

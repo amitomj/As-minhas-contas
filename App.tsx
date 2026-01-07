@@ -111,14 +111,16 @@ const App: React.FC = () => {
   }, [editingExpense]);
 
   const deleteExpense = useCallback((id: string) => {
-    setData(prev => {
-      const amount = prev.expenses.find(e => e.id === id)?.amount || 0;
-      return {
-        ...prev,
-        expenses: prev.expenses.filter(e => e.id !== id),
-        balance: prev.balance + amount
-      };
-    });
+    if (confirm("Tem certeza que deseja eliminar esta despesa?")) {
+      setData(prev => {
+        const amount = prev.expenses.find(e => e.id === id)?.amount || 0;
+        return {
+          ...prev,
+          expenses: prev.expenses.filter(e => e.id !== id),
+          balance: prev.balance + amount
+        };
+      });
+    }
   }, []);
 
   const updateMembers = useCallback((members: Member[]) => {
@@ -135,7 +137,7 @@ const App: React.FC = () => {
     
     switch (view) {
       case 'permission': return <PermissionScreen onGrant={grantPermission} />;
-      case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} />;
+      case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} />;
       case 'add-expense': return (
         <AddExpense 
           sources={data.sources} 
@@ -149,7 +151,7 @@ const App: React.FC = () => {
       case 'export': return <ExportData expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'stats': return <Stats expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={startEditExpense} onDelete={deleteExpense} />;
-      default: return <Home data={data} setView={setView} onLogout={handleLogout} />;
+      default: return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} />;
     }
   };
 

@@ -26,9 +26,22 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
     const byDay: Record<string, number> = {};
 
     filtered.forEach(e => {
+      // Gastos por Origem
       bySource[e.source] = (bySource[e.source] || 0) + e.amount;
-      const mName = e.memberId === 'all' ? 'Agregado' : (members.find(m => m.id === e.memberId)?.name || 'Outro');
-      byMember[mName] = (byMember[mName] || 0) + e.amount;
+      
+      // Gastos por Membro (Distribuição proporcional se houver mais que um)
+      if (e.memberIds.length === 0) {
+        byMember['Agregado'] = (byMember['Agregado'] || 0) + e.amount;
+      } else {
+        const splitAmount = e.amount / e.memberIds.length;
+        e.memberIds.forEach(id => {
+          const m = members.find(mem => mem.id === id);
+          const name = m ? m.name : 'Desconhecido';
+          byMember[name] = (byMember[name] || 0) + splitAmount;
+        });
+      }
+
+      // Gastos por Dia
       const day = e.date;
       byDay[day] = (byDay[day] || 0) + e.amount;
     });
@@ -82,7 +95,6 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
       <div className="flex-1 min-h-[300px] bg-surface-dark rounded-3xl p-6 border border-white/5 relative">
         {chartType === 'bar' && (
           <div className="h-full flex flex-col justify-end gap-4">
-            {/* Added explicit type casting for Object.entries to handle numeric sort and property access */}
             {(Object.entries(statsData.bySource) as [string, number][]).sort((a,b) => b[1] - a[1]).slice(0, 5).map(([source, amount]) => (
               <div key={source} className="space-y-1">
                 <div className="flex justify-between text-[10px] font-bold text-gray-400">
@@ -92,7 +104,6 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
                 <div className="h-3 bg-white/5 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-primary rounded-full transition-all duration-1000" 
-                    // Added explicit type casting for Object.values
                     style={{ width: `${(amount / Math.max(...(Object.values(statsData.bySource) as number[]))) * 100}%` }}
                   />
                 </div>
@@ -105,7 +116,6 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
           <div className="h-full flex items-center justify-center flex-col gap-8">
             <div className="relative size-48">
               <svg viewBox="0 0 32 32" className="size-full -rotate-90">
-                {/* Fixed arithmetic errors by explicitly typing the reduce accumulator and parameters */}
                 {(Object.entries(statsData.byMember) as [string, number][]).reduce((acc: { elements: any[], offset: number }, [label, value], i: number) => {
                   const total = statsData.total;
                   const percent = total > 0 ? (value / total) * 100 : 0;
@@ -123,17 +133,16 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
                   return acc;
                 }, { elements: [] as any[], offset: 25 }).elements}
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center flex-col">
-                <span className="text-[10px] text-gray-500 font-bold uppercase">Membros</span>
-                <span className="text-xs font-bold">{Object.keys(statsData.byMember).length}</span>
+              <div className="absolute inset-0 flex items-center justify-center flex-col text-center px-4">
+                <span className="text-[9px] text-gray-500 font-bold uppercase leading-tight">Distribuição Familiar</span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full">
-              {/* Added explicit type casting for Object.entries to resolve index arithmetic inference */}
               {(Object.entries(statsData.byMember) as [string, number][]).map(([label, value], i) => (
                 <div key={label} className="flex items-center gap-2">
-                  <div className="size-2 rounded-full" style={{ backgroundColor: ['#13ec5b', '#22c55e', '#166534', '#14532d'][i % 4] }}></div>
+                  <div className="size-2 rounded-full shrink-0" style={{ backgroundColor: ['#13ec5b', '#22c55e', '#166534', '#14532d'][i % 4] }}></div>
                   <span className="text-[10px] text-gray-400 font-medium truncate">{label}</span>
+                  <span className="text-[9px] text-gray-600 font-bold ml-auto">€{value.toFixed(0)}</span>
                 </div>
               ))}
             </div>
@@ -143,27 +152,24 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
         {chartType === 'line' && (
           <div className="h-full flex flex-col">
              <div className="flex-1 flex items-end gap-1 px-2">
-               {/* Fixed type inference for map callback parameters in line chart */}
                {(Object.entries(statsData.byDay) as [string, number][]).sort((a,b) => a[0].localeCompare(b[0])).slice(-7).map(([day, val]) => (
                  <div key={day} className="flex-1 flex flex-col items-center gap-2">
                    <div 
                     className="w-full bg-primary/40 hover:bg-primary transition-all rounded-t-lg" 
-                    // Added explicit type casting for Object.values
                     style={{ height: `${(val / Math.max(...(Object.values(statsData.byDay) as number[]))) * 100}%`, minHeight: '4px' }}
                    />
                    <span className="text-[8px] text-gray-500 font-bold">{day.split('-')[2]}</span>
                  </div>
                ))}
              </div>
-             <p className="text-center text-[10px] text-gray-500 mt-4 font-bold">Gastos diários (últimos registros)</p>
+             <p className="text-center text-[10px] text-gray-500 mt-4 font-bold">Gastos diários (últimos 7 dias)</p>
           </div>
         )}
       </div>
       
       <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-center gap-4">
         <span className="material-symbols-outlined text-primary">tips_and_updates</span>
-        <p className="text-[11px] text-primary leading-tight font-medium">O seu gasto maior este mês foi em <span className="font-bold underline">
-          {/* Added explicit type casting for Object.entries */}
+        <p className="text-[11px] text-primary leading-tight font-medium">O seu maior gasto foi em <span className="font-bold underline">
           {(Object.entries(statsData.bySource) as [string, number][]).sort((a,b)=>b[1]-a[1])[0]?.[0] || '---'}
         </span>. Tente reduzir 10% no próximo mês para atingir o seu objetivo.</p>
       </div>

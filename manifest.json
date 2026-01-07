@@ -1,0 +1,23 @@
+
+{
+  "name": "Finanças Pro",
+  "short_name": "FinPro",
+  "description": "Gestão Financeira Familiar com Biometria",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#102216",
+  "theme_color": "#13ec5b",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/finpro/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://picsum.photos/seed/finpro/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
