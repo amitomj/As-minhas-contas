@@ -26,9 +26,12 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
   };
 
   return (
-    <div className="h-full flex flex-col pb-32 overflow-y-auto no-scrollbar relative z-10">
+    <div className="h-full flex flex-col pb-32 overflow-y-auto no-scrollbar relative">
       <header className="flex items-center justify-between px-6 pt-12 pb-4 shrink-0 z-50">
-        <div className="flex items-center gap-3 active:opacity-70 transition-opacity cursor-pointer" onClick={() => setView('settings')}>
+        <div 
+          className="flex items-center gap-3 active:opacity-70 transition-opacity cursor-pointer p-2 -m-2" 
+          onClick={() => setView('settings')}
+        >
           <img src={data.user.avatar} className="h-10 w-10 rounded-xl border-2 border-primary/20 shadow-lg" alt="Avatar" />
           <div>
             <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest leading-none mb-1">Olá,</p>
@@ -45,13 +48,16 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
               <span className="text-[10px] font-black uppercase tracking-widest">Instalar</span>
             </button>
           )}
-          <button onClick={onLogout} className="h-11 w-11 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 text-red-400 active:scale-90 transition-all">
+          <button 
+            onClick={() => onLogout()} 
+            className="h-11 w-11 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 text-red-400 active:scale-90 transition-all"
+          >
             <span className="material-symbols-outlined text-lg font-black">logout</span>
           </button>
         </div>
       </header>
 
-      <main className="flex-1 px-6 space-y-10 relative z-20">
+      <main className="flex-1 px-6 space-y-10 relative">
         <section className="mt-4">
           <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mb-3">Saldo Disponível</p>
           <div className="flex items-baseline gap-2">
@@ -64,14 +70,14 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
 
         <section className="grid grid-cols-2 gap-4">
           <button 
-            onClick={(e) => { e.preventDefault(); setView('add-expense'); }} 
+            onClick={() => setView('add-expense')} 
             className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-gradient-to-br from-secondary to-primary text-white shadow-2xl shadow-primary/20 active:scale-95 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-4xl mb-2 font-black">add_circle</span>
             <span className="text-[10px] font-black uppercase tracking-widest text-center">Novo Gasto</span>
           </button>
           <button 
-            onClick={(e) => { e.preventDefault(); setView('export'); }} 
+            onClick={() => setView('export')} 
             className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-surface-dark border border-white/5 text-white active:scale-95 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-4xl mb-2 text-secondary">file_export</span>
@@ -83,8 +89,8 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
           <div className="flex items-center justify-between">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Últimos Gastos</h3>
             <button 
-              onClick={(e) => { e.preventDefault(); setView('transactions'); }} 
-              className="text-[10px] text-primary font-black uppercase tracking-widest py-2 px-3 bg-primary/5 rounded-lg active:scale-95 transition-all cursor-pointer"
+              onClick={() => setView('transactions')} 
+              className="text-[10px] text-primary font-black uppercase tracking-widest py-3 px-4 bg-primary/5 rounded-xl active:scale-95 transition-all cursor-pointer"
             >
               Ver Tudo
             </button>
@@ -129,6 +135,11 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
                 )}
               </div>
             ))}
+            {data.expenses.length === 0 && (
+              <div className="py-10 text-center opacity-20">
+                <p className="text-xs font-black uppercase tracking-widest">Sem despesas</p>
+              </div>
+            )}
           </div>
         </section>
       </main>

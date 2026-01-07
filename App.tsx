@@ -20,7 +20,6 @@ const App: React.FC = () => {
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
-  // Capturar evento de instalação globalmente para não o perder
   useEffect(() => {
     const handler = (e: any) => {
       e.preventDefault();
@@ -56,6 +55,7 @@ const App: React.FC = () => {
   const handleLogin = useCallback((user: UserAccount) => {
     setCurrentUser(user);
     localStorage.setItem('financas_pro_session', JSON.stringify(user));
+    localStorage.setItem('financas_pro_last_email', user.email);
     
     const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
     if (userData) {
@@ -154,28 +154,28 @@ const App: React.FC = () => {
         <nav className="shrink-0 bg-bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-8 pt-3 z-[100]">
           <div className="flex justify-around items-center px-4">
             <button 
-              onClick={(e) => { e.preventDefault(); setView('home'); }} 
+              onClick={() => setView('home')} 
               className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}
             >
               <span className="material-symbols-outlined text-[28px]">home</span>
               <span className="text-[10px] font-bold">Início</span>
             </button>
             <button 
-              onClick={(e) => { e.preventDefault(); setView('transactions'); }} 
-              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}
+              onClick={() => setView('transactions')} 
+              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'transactions' || view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}
             >
               <span className="material-symbols-outlined text-[28px]">receipt_long</span>
               <span className="text-[10px] font-bold">Extrato</span>
             </button>
             <button 
-              onClick={(e) => { e.preventDefault(); setView('stats'); }} 
+              onClick={() => setView('stats')} 
               className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}
             >
               <span className="material-symbols-outlined text-[28px]">monitoring</span>
               <span className="text-[10px] font-bold">Gráfico</span>
             </button>
             <button 
-              onClick={(e) => { e.preventDefault(); setView('household'); }} 
+              onClick={() => setView('household')} 
               className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}
             >
               <span className="material-symbols-outlined text-[28px]">group</span>

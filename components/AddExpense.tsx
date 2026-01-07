@@ -25,6 +25,15 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
     'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
   };
 
+  const numberWords: Record<string, number> = {
+    'um': 1, 'uma': 1, 'dois': 2, 'duas': 2, 'três': 3, 'quatro': 4, 'cinco': 5,
+    'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9, 'dez': 10, 'onze': 11, 'doze': 12,
+    'treze': 13, 'catorze': 14, 'quinze': 15, 'dezasseis': 16, 'dezassete': 17,
+    'dezoito': 18, 'dezanove': 19, 'vinte': 20, 'vinte e um': 21, 'vinte e dois': 22,
+    'vinte e três': 23, 'vinte e quatro': 24, 'vinte e cinco': 25, 'vinte e seis': 26,
+    'vinte e sete': 27, 'vinte e oito': 28, 'vinte e nove': 29, 'trinta': 30, 'trinta e um': 31
+  };
+
   const toggleMember = (id: string) => {
     setSelectedMemberIds(prev => 
       prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
@@ -49,7 +58,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
     
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.toLowerCase();
-      console.log("Comando:", transcript);
+      console.log("Comando de Voz:", transcript);
       
       // Capturar Valor
       const valueMatch = transcript.match(/(\d+(?:\s?e\s?|\s?com\s?|[,.]\s?)\d+|\d+)/);
@@ -58,7 +67,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
         setAmount(valStr);
       }
       
-      // Capturar Data (Hoje, Ontem, Dia X)
+      // Capturar Data
       if (transcript.includes('hoje')) {
         setDate(new Date().toISOString().split('T')[0]);
       } else if (transcript.includes('ontem')) {
@@ -68,20 +77,30 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
         const d = new Date(); d.setDate(d.getDate() - 2);
         setDate(d.toISOString().split('T')[0]);
       } else {
-        // Detetar "dia X de Mês"
-        const dayMatch = transcript.match(/dia\s?(\d{1,2})/);
-        if (dayMatch) {
-          let targetDay = dayMatch[1].padStart(2, '0');
+        // Detetar "dia X" ou "dia vinte e cinco"
+        let dayFound = "";
+        const numericMatch = transcript.match(/dia\s?(\d{1,2})/);
+        if (numericMatch) {
+          dayFound = numericMatch[1].padStart(2, '0');
+        } else {
+          for (const [word, num] of Object.entries(numberWords)) {
+            if (transcript.includes(`dia ${word}`)) {
+              dayFound = num.toString().padStart(2, '0');
+              break;
+            }
+          }
+        }
+
+        if (dayFound) {
           let targetMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
           let targetYear = new Date().getFullYear();
-
           for (const [mName, mNum] of Object.entries(months)) {
             if (transcript.includes(mName)) {
               targetMonth = mNum;
               break;
             }
           }
-          setDate(`${targetYear}-${targetMonth}-${targetDay}`);
+          setDate(`${targetYear}-${targetMonth}-${dayFound}`);
         }
       }
 
