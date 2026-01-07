@@ -1,0 +1,7 @@
+{
+  "name": "Finanças Pro",
+  "description": "Uma aplicação completa de gestão financeira pessoal com suporte a agregados familiares, comandos de voz e exportação profissional.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
