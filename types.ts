@@ -31,6 +31,7 @@ export interface AppData {
   members: Member[];
   sources: string[];
   user: UserAccount;
+  lastResetMonth?: string; // Formato: YYYY-MM
 }
 
 export type View = 'home' | 'transactions' | 'household' | 'export' | 'add-expense' | 'permission' | 'stats' | 'auth' | 'settings';

@@ -18,15 +18,33 @@ const App: React.FC = () => {
   const [initialized, setInitialized] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
 
+  // Efeito de Inicialização e Reset Mensal
   useEffect(() => {
     const savedSession = localStorage.getItem('financas_pro_session');
     if (savedSession) {
       try {
         const user = JSON.parse(savedSession);
         setCurrentUser(user);
-        const userData = localStorage.getItem(`fin_data_${user.email}`);
-        if (userData) setData(JSON.parse(userData));
-      } catch (e) { console.error(e); }
+        const userDataStr = localStorage.getItem(`fin_data_${user.email}`);
+        if (userDataStr) {
+          let userData: AppData = JSON.parse(userDataStr);
+          
+          // Lógica de Reset no dia 1 de cada mês
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          if (userData.lastResetMonth !== currentMonth) {
+            userData = {
+              ...userData,
+              balance: 0,
+              expenses: [],
+              lastResetMonth: currentMonth
+            };
+            console.log("Reset mensal efetuado para: ", currentMonth);
+          }
+          setData(userData);
+        }
+      } catch (e) { 
+        console.error("Erro ao carregar dados:", e); 
+      }
     }
     setInitialized(true);
   }, []);
@@ -40,9 +58,19 @@ const App: React.FC = () => {
   const handleLogin = (user: UserAccount) => {
     setCurrentUser(user);
     localStorage.setItem('financas_pro_session', JSON.stringify(user));
-    const userData = localStorage.getItem(`fin_data_${user.email}`);
-    if (userData) setData(JSON.parse(userData));
-    else setData({ ...INITIAL_DATA, user, expenses: [], balance: 0 });
+    const userDataStr = localStorage.getItem(`fin_data_${user.email}`);
+    
+    if (userDataStr) {
+      let userData: AppData = JSON.parse(userDataStr);
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      if (userData.lastResetMonth !== currentMonth) {
+        userData = { ...userData, balance: 0, expenses: [], lastResetMonth: currentMonth };
+      }
+      setData(userData);
+    } else {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      setData({ ...INITIAL_DATA, user, lastResetMonth: currentMonth });
+    }
     setView('home');
   };
 
@@ -52,7 +80,6 @@ const App: React.FC = () => {
       let balanceAdjustment = 0;
 
       if (editingExpense) {
-        // Modo Edição: Atualiza o gasto existente
         newExpenses = prev.expenses.map(e => {
           if (e.id === editingExpense.id) {
             balanceAdjustment = editingExpense.amount - expenseData.amount;
@@ -61,7 +88,6 @@ const App: React.FC = () => {
           return e;
         });
       } else {
-        // Modo Adição: Cria um novo gasto
         const newExp = { 
           ...expenseData, 
           id: Math.random().toString(36).substr(2, 9), 
