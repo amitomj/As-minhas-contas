@@ -11,7 +11,7 @@ export interface Expense {
   amount: number;
   date: string;
   source: string;
-  memberId: string; // "all" or specific member ID
+  memberIds: string[]; // Mudado para array de strings para permitir múltiplos membros
   notes?: string;
   timestamp: number;
 }

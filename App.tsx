@@ -16,8 +16,8 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [data, setData] = useState<AppData>(INITIAL_DATA);
   const [initialized, setInitialized] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
 
-  // Inicialização e recuperação de sessão
   useEffect(() => {
     const savedSession = localStorage.getItem('financas_pro_session');
     const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
@@ -32,7 +32,6 @@ const App: React.FC = () => {
           setData(JSON.parse(userData));
           setView(hasPermission ? 'home' : 'permission');
         } else {
-          // Caso de segurança: utilizador logado mas sem dados, cria-os
           const newData = { ...INITIAL_DATA, user };
           setData(newData);
           localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
@@ -47,7 +46,6 @@ const App: React.FC = () => {
     setInitialized(true);
   }, []);
 
-  // "Salvaguarda Automática": Sincroniza o estado com o "Ficheiro JSON" no localStorage
   useEffect(() => {
     if (initialized && currentUser) {
       localStorage.setItem(`financas_pro_data_${currentUser.email}`, JSON.stringify(data));
@@ -60,21 +58,12 @@ const App: React.FC = () => {
     
     const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
     if (userData) {
-      // Login de utilizador existente: carrega os dados dele
       setData(JSON.parse(userData));
     } else {
-      // Registo de novo utilizador: cria o "JSON" inicial personalizado
-      const newData = { 
-        ...INITIAL_DATA, 
-        user, 
-        expenses: [], 
-        balance: 0,
-        members: [] // Começa com agregado vazio para o novo utilizador configurar
-      };
+      const newData = { ...INITIAL_DATA, user, expenses: [], balance: 0 };
       setData(newData);
       localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
     }
-
     const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
     setView(hasPermission ? 'home' : 'permission');
   }, []);
@@ -90,24 +79,56 @@ const App: React.FC = () => {
     setView('home');
   }, []);
 
-  const addExpense = useCallback((expense: Omit<Expense, 'id' | 'timestamp'>) => {
-    const newExpense: Expense = {
-      ...expense,
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: Date.now()
-    };
-    setData(prev => ({
-      ...prev,
-      expenses: [newExpense, ...prev.expenses],
-      balance: prev.balance - newExpense.amount,
-      sources: prev.sources.includes(expense.source) ? prev.sources : [...prev.sources, expense.source]
-    }));
+  const saveExpense = useCallback((expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
+    if (editingExpense) {
+      setData(prev => {
+        const oldAmount = prev.expenses.find(e => e.id === editingExpense.id)?.amount || 0;
+        const newExpenses = prev.expenses.map(e => 
+          e.id === editingExpense.id ? { ...expenseData, id: e.id, timestamp: e.timestamp } : e
+        );
+        return {
+          ...prev,
+          expenses: newExpenses,
+          balance: prev.balance + oldAmount - expenseData.amount,
+          sources: prev.sources.includes(expenseData.source) ? prev.sources : [...prev.sources, expenseData.source]
+        };
+      });
+    } else {
+      const newExpense: Expense = {
+        ...expenseData,
+        id: Math.random().toString(36).substr(2, 9),
+        timestamp: Date.now()
+      };
+      setData(prev => ({
+        ...prev,
+        expenses: [newExpense, ...prev.expenses],
+        balance: prev.balance - newExpense.amount,
+        sources: prev.sources.includes(expenseData.source) ? prev.sources : [...prev.sources, expenseData.source]
+      }));
+    }
+    setEditingExpense(undefined);
     setView('home');
+  }, [editingExpense]);
+
+  const deleteExpense = useCallback((id: string) => {
+    setData(prev => {
+      const amount = prev.expenses.find(e => e.id === id)?.amount || 0;
+      return {
+        ...prev,
+        expenses: prev.expenses.filter(e => e.id !== id),
+        balance: prev.balance + amount
+      };
+    });
   }, []);
 
   const updateMembers = useCallback((members: Member[]) => {
     setData(prev => ({ ...prev, members }));
   }, []);
+
+  const startEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setView('add-expense');
+  };
 
   const renderView = () => {
     if (view === 'auth') return <Auth onLogin={handleLogin} />;
@@ -115,11 +136,19 @@ const App: React.FC = () => {
     switch (view) {
       case 'permission': return <PermissionScreen onGrant={grantPermission} />;
       case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} />;
-      case 'add-expense': return <AddExpense sources={data.sources} members={data.members} onSave={addExpense} onBack={() => setView('home')} />;
+      case 'add-expense': return (
+        <AddExpense 
+          sources={data.sources} 
+          members={data.members} 
+          onSave={saveExpense} 
+          onBack={() => { setView('home'); setEditingExpense(undefined); }} 
+          editingExpense={editingExpense}
+        />
+      );
       case 'household': return <HouseholdManagement members={data.members} onUpdate={updateMembers} onBack={() => setView('home')} />;
       case 'export': return <ExportData expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'stats': return <Stats expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
-      case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
+      case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={startEditExpense} onDelete={deleteExpense} />;
       default: return <Home data={data} setView={setView} onLogout={handleLogout} />;
     }
   };

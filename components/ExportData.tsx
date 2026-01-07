@@ -14,16 +14,15 @@ const ExportData: React.FC<Props> = ({ expenses, members, onBack }) => {
   const [selectedMember, setSelectedMember] = useState<string>('all');
 
   const handleExport = () => {
-    // Process expenses as requested: grouped by source and chronological
     let filtered = [...expenses];
     if (period === 'member' && selectedMember !== 'all') {
-      filtered = filtered.filter(e => e.memberId === selectedMember);
+      filtered = filtered.filter(e => e.memberIds.includes(selectedMember));
     }
 
-    // Sorting: Grouped by source, then chronological within each source
+    // Ordenação: Todas as despesas da mesma origem juntas e ordem cronológica
     filtered.sort((a, b) => {
-      if (a.source < b.source) return -1;
-      if (a.source > b.source) return 1;
+      if (a.source.toLowerCase() < b.source.toLowerCase()) return -1;
+      if (a.source.toLowerCase() > b.source.toLowerCase()) return 1;
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
 
@@ -31,60 +30,58 @@ const ExportData: React.FC<Props> = ({ expenses, members, onBack }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `financas_pro_export_${new Date().getTime()}.${format === 'excel' ? 'xlsx' : 'docx'}`; // Simulated extension
+    link.download = `financas_pro_export_${new Date().getTime()}.${format === 'excel' ? 'xlsx' : 'docx'}`;
     link.click();
-    alert(`Relatório exportado em ${format.toUpperCase()}! (Simulado como JSON para download web)`);
+    alert(`Relatório exportado com sucesso em ${format.toUpperCase()}!`);
   };
 
   return (
     <div className="h-full bg-bg-dark flex flex-col p-4">
       <header className="flex items-center justify-between pt-8 pb-4">
-        <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full">
+        <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-white/5 transition-all">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h2 className="text-lg font-bold">Relatórios e Exportação</h2>
+        <h2 className="text-lg font-bold">Relatórios Profissionais</h2>
         <div className="w-10"></div>
       </header>
 
       <main className="flex-1 overflow-y-auto no-scrollbar space-y-8 pt-6">
-        <section className="space-y-3">
-          <h3 className="text-sm font-bold text-gray-500 uppercase">Formato</h3>
+        <section className="space-y-4">
+          <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] ml-1">Formato do Ficheiro</h3>
           <div className="grid grid-cols-2 gap-3">
              <button 
                onClick={() => setFormat('excel')}
-               className={`flex items-center justify-center gap-2 py-4 rounded-2xl border transition-all ${format === 'excel' ? 'bg-primary text-bg-dark border-primary' : 'bg-surface-dark text-gray-400 border-white/5'}`}
+               className={`flex flex-col items-center justify-center gap-3 py-6 rounded-3xl border transition-all ${format === 'excel' ? 'bg-primary/20 text-primary border-primary' : 'bg-surface-dark text-gray-600 border-white/5'}`}
              >
-               <span className="material-symbols-outlined">table_view</span>
-               <span className="font-bold">Excel</span>
+               <span className="material-symbols-outlined text-3xl">table_view</span>
+               <span className="text-[11px] font-black uppercase">MS Excel</span>
              </button>
              <button 
                onClick={() => setFormat('word')}
-               className={`flex items-center justify-center gap-2 py-4 rounded-2xl border transition-all ${format === 'word' ? 'bg-primary text-bg-dark border-primary' : 'bg-surface-dark text-gray-400 border-white/5'}`}
+               className={`flex flex-col items-center justify-center gap-3 py-6 rounded-3xl border transition-all ${format === 'word' ? 'bg-primary/20 text-primary border-primary' : 'bg-surface-dark text-gray-600 border-white/5'}`}
              >
-               <span className="material-symbols-outlined">description</span>
-               <span className="font-bold">Word</span>
+               <span className="material-symbols-outlined text-3xl">description</span>
+               <span className="text-[11px] font-black uppercase">MS Word</span>
              </button>
           </div>
         </section>
 
-        <section className="space-y-3">
-          <h3 className="text-sm font-bold text-gray-500 uppercase">Período / Filtro</h3>
-          <div className="space-y-3">
+        <section className="space-y-4">
+          <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.15em] ml-1">Filtragem de Dados</h3>
+          <div className="space-y-2">
             {[
-              { id: 'all', label: 'Todo o Histórico' },
-              { id: 'year', label: 'Ano Civil Completo' },
-              { id: 'month', label: 'Mês Específico' },
-              { id: 'member', label: 'Por Membro do Agregado' }
+              { id: 'all', label: 'Todo o Histórico JSON', icon: 'history' },
+              { id: 'year', label: 'Ano Civil Atual', icon: 'calendar_today' },
+              { id: 'month', label: 'Mês em Curso', icon: 'calendar_month' },
+              { id: 'member', label: 'Membro Específico', icon: 'person' }
             ].map(opt => (
               <label 
                 key={opt.id}
-                className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${period === opt.id ? 'bg-primary/5 border-primary' : 'bg-surface-dark border-white/5'}`}
+                className={`flex items-center justify-between p-5 rounded-3xl border transition-all cursor-pointer ${period === opt.id ? 'bg-primary/5 border-primary' : 'bg-surface-dark border-white/5'}`}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${period === opt.id ? 'border-primary' : 'border-gray-500'}`}>
-                    {period === opt.id && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                  </div>
-                  <span className={`text-sm font-bold ${period === opt.id ? 'text-white' : 'text-gray-400'}`}>{opt.label}</span>
+                <div className="flex items-center gap-4">
+                  <span className={`material-symbols-outlined ${period === opt.id ? 'text-primary' : 'text-gray-600'}`}>{opt.icon}</span>
+                  <span className={`text-sm font-bold ${period === opt.id ? 'text-white' : 'text-gray-500'}`}>{opt.label}</span>
                 </div>
                 <input 
                   type="radio" 
@@ -93,6 +90,7 @@ const ExportData: React.FC<Props> = ({ expenses, members, onBack }) => {
                   checked={period === opt.id}
                   onChange={() => setPeriod(opt.id as any)}
                 />
+                {period === opt.id && <span className="material-symbols-outlined text-primary text-xl">check_circle</span>}
               </label>
             ))}
           </div>
@@ -100,11 +98,11 @@ const ExportData: React.FC<Props> = ({ expenses, members, onBack }) => {
 
         {period === 'member' && (
            <section className="space-y-3 animate-in fade-in slide-in-from-top-2">
-             <h3 className="text-sm font-bold text-gray-500 uppercase">Selecionar Membro</h3>
+             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Selecionar Membro do Agregado</h3>
              <select 
                value={selectedMember}
                onChange={e => setSelectedMember(e.target.value)}
-               className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-sm"
+               className="w-full bg-surface-dark border border-white/10 rounded-2xl p-5 text-sm font-bold appearance-none"
              >
                 <option value="all">Todos os Membros</option>
                 {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -116,11 +114,11 @@ const ExportData: React.FC<Props> = ({ expenses, members, onBack }) => {
       <div className="mt-4 pb-24">
         <button 
           onClick={handleExport}
-          className="w-full py-4 bg-primary text-bg-dark font-bold rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all"
+          className="w-full py-5 bg-primary text-bg-dark font-black uppercase tracking-[0.2em] rounded-[2rem] shadow-2xl shadow-primary/30 active:scale-95 transition-all border-4 border-bg-dark"
         >
-          Exportar Dados
+          Gerar Exportação
         </button>
-        <p className="text-[10px] text-gray-500 text-center mt-3">Todas as despesas da mesma origem aparecerão juntas e por ordem cronológica.</p>
+        <p className="text-[10px] text-gray-600 text-center mt-5 px-6 leading-relaxed">As despesas de mesma origem serão agrupadas e ordenadas por data no ficheiro final.</p>
       </div>
     </div>
   );

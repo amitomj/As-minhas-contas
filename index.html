@@ -44,9 +44,11 @@
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
             font-family: 'Inter', sans-serif;
+            user-select: none;
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        input, select, textarea { user-select: text; }
     </style>
     <script type="importmap">
 {

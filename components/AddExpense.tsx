@@ -1,23 +1,30 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Member } from '../types';
+import { Member, Expense } from '../types';
 
 interface AddExpenseProps {
   sources: string[];
   members: Member[];
-  onSave: (expense: { amount: number, date: string, source: string, memberId: string, notes: string }) => void;
+  onSave: (expense: { amount: number, date: string, source: string, memberIds: string[], notes: string }) => void;
   onBack: () => void;
+  editingExpense?: Expense;
 }
 
-const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBack }) => {
-  const [amount, setAmount] = useState<string>('');
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [source, setSource] = useState<string>(sources[0] || '');
-  const [memberId, setMemberId] = useState<string>('all');
-  const [notes, setNotes] = useState<string>('');
+const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBack, editingExpense }) => {
+  const [amount, setAmount] = useState<string>(editingExpense?.amount.toString() || '');
+  const [date, setDate] = useState<string>(editingExpense?.date || new Date().toISOString().split('T')[0]);
+  const [source, setSource] = useState<string>(editingExpense?.source || sources[0] || '');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(editingExpense?.memberIds || []);
+  const [notes, setNotes] = useState<string>(editingExpense?.notes || '');
   const [isListening, setIsListening] = useState(false);
   const [showNewSourceInput, setShowNewSourceInput] = useState(false);
   const [newSourceName, setNewSourceName] = useState('');
+
+  const toggleMember = (id: string) => {
+    setSelectedMemberIds(prev => 
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+  };
 
   const handleVoiceInput = useCallback(() => {
     if (!('webkitSpeechRecognition' in window)) {
@@ -33,22 +40,40 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
     
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.toLowerCase();
+      console.log("Comando de voz:", transcript);
       
+      // 1. Tentar encontrar valor (ex: "cinquenta euros", "vinte e cinco ponto dois")
       const valueMatch = transcript.match(/(\d+(?:[.,]\d+)?)/);
       if (valueMatch) {
-        const val = valueMatch[1].replace(',', '.');
-        setAmount(val);
+        setAmount(valueMatch[1].replace(',', '.'));
       }
       
+      // 2. Tentar encontrar origem entre as existentes
       const foundSource = sources.find(s => transcript.includes(s.toLowerCase()));
       if (foundSource) {
         setSource(foundSource);
         setShowNewSourceInput(false);
       }
+
+      // 3. Tentar encontrar data
+      if (transcript.includes('ontem')) {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        setDate(d.toISOString().split('T')[0]);
+      } else if (transcript.includes('hoje')) {
+        setDate(new Date().toISOString().split('T')[0]);
+      }
+
+      // 4. Tentar encontrar membros pelos nomes
+      members.forEach(m => {
+        if (transcript.includes(m.name.toLowerCase())) {
+          setSelectedMemberIds(prev => prev.includes(m.id) ? prev : [...prev, m.id]);
+        }
+      });
     };
     
     recognition.start();
-  }, [sources]);
+  }, [sources, members]);
 
   const handleSave = () => {
     const finalSource = showNewSourceInput ? newSourceName : source;
@@ -60,7 +85,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
       amount: parseFloat(amount), 
       date, 
       source: finalSource, 
-      memberId, 
+      memberIds: selectedMemberIds, 
       notes 
     });
   };
@@ -71,8 +96,8 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
         <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-90 transition-all">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h2 className="text-lg font-bold">Nova Despesa</h2>
-        <button onClick={handleSave} className="text-primary font-bold px-5 py-2 bg-primary/10 rounded-full active:scale-95 transition-all">Guardar</button>
+        <h2 className="text-lg font-bold">{editingExpense ? 'Editar Despesa' : 'Nova Despesa'}</h2>
+        <button onClick={handleSave} className="text-primary font-bold px-5 py-2 bg-primary/10 rounded-full active:scale-95 transition-all tracking-tight">Confirmar</button>
       </header>
 
       <main className="flex-1 space-y-8 pt-6">
@@ -100,10 +125,11 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
         </div>
 
         <div className="space-y-6 px-2">
-          <div className="bg-surface-dark rounded-[2rem] p-6 border border-white/5 space-y-6">
+          <div className="bg-surface-dark rounded-[2.5rem] p-7 border border-white/5 space-y-7">
+            {/* Data */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="size-8 rounded-full bg-white/5 flex items-center justify-center">
+                <div className="size-9 rounded-full bg-white/5 flex items-center justify-center">
                   <span className="material-symbols-outlined text-primary text-xl">calendar_today</span>
                 </div>
                 <span className="text-sm font-semibold">Data</span>
@@ -118,17 +144,18 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
 
             <div className="h-px bg-white/5"></div>
 
+            {/* Origem */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-white/5 flex items-center justify-center">
+                  <div className="size-9 rounded-full bg-white/5 flex items-center justify-center">
                     <span className="material-symbols-outlined text-primary text-xl">store</span>
                   </div>
                   <span className="text-sm font-semibold">Origem</span>
                 </div>
                 <button 
                   onClick={() => setShowNewSourceInput(!showNewSourceInput)}
-                  className="text-[10px] text-primary font-black uppercase tracking-wider"
+                  className="text-[10px] text-primary font-black uppercase tracking-wider bg-primary/10 px-3 py-1.5 rounded-lg"
                 >
                   {showNewSourceInput ? 'Escolher Lista' : 'Nova +'}
                 </button>
@@ -140,7 +167,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
                     <button 
                       key={s}
                       onClick={() => setSource(s)}
-                      className={`px-5 py-2.5 rounded-2xl text-[11px] font-black shrink-0 border transition-all ${source === s ? 'bg-primary text-bg-dark border-primary shadow-lg shadow-primary/20' : 'bg-bg-dark text-gray-500 border-white/5'}`}
+                      className={`px-5 py-3 rounded-2xl text-[11px] font-black shrink-0 border transition-all ${source === s ? 'bg-primary text-bg-dark border-primary shadow-lg shadow-primary/20' : 'bg-bg-dark text-gray-500 border-white/5'}`}
                     >
                       {s.toUpperCase()}
                     </button>
@@ -160,42 +187,33 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
 
             <div className="h-px bg-white/5"></div>
 
+            {/* Membros Selecionáveis */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="size-8 rounded-full bg-white/5 flex items-center justify-center">
+                <div className="size-9 rounded-full bg-white/5 flex items-center justify-center">
                   <span className="material-symbols-outlined text-primary text-xl">group</span>
                 </div>
-                <span className="text-sm font-semibold">Membro</span>
+                <span className="text-sm font-semibold">Membros Responsáveis</span>
               </div>
               
-              <div className="flex p-1.5 bg-bg-dark rounded-[1.25rem]">
+              <div className="grid grid-cols-2 gap-2 pb-2">
                 <button 
-                  onClick={() => setMemberId('all')}
-                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${memberId === 'all' ? 'bg-primary text-bg-dark shadow-md' : 'text-gray-500'}`}
+                  onClick={() => setSelectedMemberIds([])}
+                  className={`px-4 py-3 rounded-2xl text-[11px] font-bold border transition-all ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}
                 >
-                  Agregado
+                  TODO O AGREGADO
                 </button>
-                <button 
-                  onClick={() => setMemberId(members[0]?.id || '')}
-                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${memberId !== 'all' ? 'bg-primary text-bg-dark shadow-md' : 'text-gray-500'}`}
-                >
-                  Específico
-                </button>
+                {members.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => toggleMember(m.id)}
+                    className={`px-4 py-3 rounded-2xl text-[11px] font-bold border transition-all truncate flex items-center justify-center gap-2 ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}
+                  >
+                    {selectedMemberIds.includes(m.id) && <span className="material-symbols-outlined text-xs">check_circle</span>}
+                    {m.name}
+                  </button>
+                ))}
               </div>
-
-              {memberId !== 'all' && (
-                <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
-                  {members.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setMemberId(m.id)}
-                      className={`px-4 py-3 rounded-2xl text-[11px] font-bold border transition-all truncate ${memberId === m.id ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-600'}`}
-                    >
-                      {m.name}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
@@ -214,9 +232,9 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
       <div className="mt-6 pb-12 shrink-0">
         <button 
           onClick={handleSave}
-          className="w-full py-5 bg-primary text-bg-dark font-black uppercase tracking-[0.15em] rounded-[2rem] shadow-2xl shadow-primary/20 active:scale-95 transition-all"
+          className="w-full py-5 bg-primary text-bg-dark font-black uppercase tracking-[0.15em] rounded-[2rem] shadow-2xl shadow-primary/40 active:scale-95 transition-all border-4 border-bg-dark"
         >
-          Confirmar Despesa
+          {editingExpense ? 'Guardar Alterações' : 'Confirmar Despesa'}
         </button>
       </div>
     </div>
