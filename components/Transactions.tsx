@@ -22,17 +22,26 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
   const sources = useMemo(() => Array.from(new Set(expenses.map(e => e.source))), [expenses]);
 
   const filteredExpenses = useMemo(() => {
+    // Garantir que trabalhamos com uma cópia ordenada por data (mais recente primeiro)
     return [...expenses]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Ordem Cronológica Descendente
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .filter(e => {
-        const matchesSearch = e.source.toLowerCase().includes(search.toLowerCase()) || 
+        // Busca textual (apenas se houver texto)
+        const matchesSearch = !search.trim() || 
+                              e.source.toLowerCase().includes(search.toLowerCase()) || 
                               (e.notes || '').toLowerCase().includes(search.toLowerCase());
-        const matchesMember = filterMember === 'all' || e.memberIds.includes(filterMember) || (filterMember === 'none' && e.memberIds.length === 0);
+        
+        // Membro
+        const matchesMember = filterMember === 'all' || 
+                              e.memberIds.includes(filterMember) || 
+                              (filterMember === 'none' && e.memberIds.length === 0);
+        
+        // Origem
         const matchesSource = filterSource === 'all' || e.source === filterSource;
         
-        const dateE = new Date(e.date).getTime();
-        const matchesDateStart = !filterDateStart || dateE >= new Date(filterDateStart).getTime();
-        const matchesDateEnd = !filterDateEnd || dateE <= new Date(filterDateEnd).getTime();
+        // Datas
+        const matchesDateStart = !filterDateStart || e.date >= filterDateStart;
+        const matchesDateEnd = !filterDateEnd || e.date <= filterDateEnd;
         
         return matchesSearch && matchesMember && matchesSource && matchesDateStart && matchesDateEnd;
       });
@@ -46,16 +55,16 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
   };
 
   return (
-    <div className="h-full bg-bg-dark flex flex-col pb-24 overflow-hidden">
-      <header className="px-6 pt-12 pb-4 space-y-4 shrink-0 bg-bg-dark/80 backdrop-blur-md z-10 border-b border-white/5">
+    <div className="h-full bg-[#050c09] flex flex-col pb-24 overflow-hidden">
+      <header className="px-6 pt-12 pb-4 space-y-4 shrink-0 bg-[#050c09]/80 backdrop-blur-md z-10 border-b border-white/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full bg-surface-dark border border-white/5">
+            <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full bg-[#11291f] border border-white/5">
               <span className="material-symbols-outlined text-xl">arrow_back</span>
             </button>
-            <h2 className="text-2xl font-black">Extrato</h2>
+            <h2 className="text-2xl font-black">Histórico</h2>
           </div>
-          <button onClick={() => setShowFilters(!showFilters)} className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-primary border-primary text-bg-dark' : 'bg-surface-dark border-white/5 text-gray-500'}`}>
+          <button onClick={() => setShowFilters(!showFilters)} className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-primary border-primary text-bg-dark' : 'bg-[#11291f] border-white/5 text-gray-500'}`}>
             <span className="material-symbols-outlined">tune</span>
           </button>
         </div>
@@ -64,17 +73,17 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">search</span>
           <input 
             type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Pesquisar loja ou notas..."
-            className="w-full bg-surface-dark border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-sm focus:ring-primary focus:border-primary text-white"
+            placeholder="Pesquisar loja..."
+            className="w-full bg-[#11291f] border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-sm focus:ring-primary focus:border-primary text-white"
           />
         </div>
 
         {showFilters && (
-          <div className="p-5 bg-surface-dark rounded-3xl border border-white/10 space-y-4 animate-in fade-in slide-in-from-top-4 shadow-2xl">
+          <div className="p-5 bg-[#11291f] rounded-3xl border border-white/10 space-y-4 animate-in fade-in slide-in-from-top-4 shadow-2xl">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Membro</label>
-                <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="w-full bg-bg-dark border border-white/10 rounded-xl px-4 py-3 text-xs text-white">
+                <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="w-full bg-[#050c09] border border-white/10 rounded-xl px-4 py-3 text-xs text-white">
                   <option value="all">Todos</option>
                   <option value="none">Agregado</option>
                   {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -82,7 +91,7 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Loja</label>
-                <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="w-full bg-bg-dark border border-white/10 rounded-xl px-4 py-3 text-xs text-white">
+                <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="w-full bg-[#050c09] border border-white/10 rounded-xl px-4 py-3 text-xs text-white">
                   <option value="all">Todas</option>
                   {sources.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -91,14 +100,13 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Início</label>
-                <input type="date" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} className="w-full bg-bg-dark border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white" />
+                <input type="date" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} className="w-full bg-[#050c09] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white" />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase ml-1">Fim</label>
-                <input type="date" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} className="w-full bg-bg-dark border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white" />
+                <input type="date" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} className="w-full bg-[#050c09] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white" />
               </div>
             </div>
-            <button onClick={() => { setSearch(''); setFilterMember('all'); setFilterSource('all'); setFilterDateStart(''); setFilterDateEnd(''); }} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-gray-500 tracking-widest">Limpar Filtros</button>
           </div>
         )}
       </header>
@@ -107,13 +115,13 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
         {filteredExpenses.length === 0 ? (
           <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-4">
             <span className="material-symbols-outlined text-6xl opacity-20">history</span>
-            <p className="text-sm font-black uppercase tracking-widest opacity-30">Sem registos</p>
+            <p className="text-sm font-black uppercase tracking-widest opacity-30">Sem registos encontrados</p>
           </div>
         ) : (
           filteredExpenses.map(exp => (
             <div key={exp.id} className="relative group">
               <div 
-                className={`flex items-center justify-between p-5 bg-surface-dark rounded-[1.8rem] border transition-all active:scale-[0.98] ${actionMenuId === exp.id ? 'border-primary ring-1 ring-primary/20' : 'border-white/5'}`}
+                className={`flex items-center justify-between p-5 bg-[#11291f] rounded-[1.8rem] border transition-all active:scale-[0.98] ${actionMenuId === exp.id ? 'border-primary ring-1 ring-primary/20' : 'border-white/5'}`}
                 onClick={() => setActionMenuId(actionMenuId === exp.id ? null : exp.id)}
               >
                 <div className="flex items-center gap-4 flex-1 overflow-hidden">
@@ -130,7 +138,7 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
                   </div>
                 </div>
                 <div className="text-right flex items-center gap-3">
-                  <p className="text-sm font-black text-white">-€{exp.amount.toFixed(2)}</p>
+                  <p className="text-sm font-black text-white">€{exp.amount.toFixed(2)}</p>
                   <span className="material-symbols-outlined text-gray-700">chevron_right</span>
                 </div>
               </div>

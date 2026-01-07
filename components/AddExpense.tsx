@@ -45,48 +45,84 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
       const transcript = event.results[0][0].transcript.toLowerCase();
       console.log("Comando de voz detetado:", transcript);
       
-      // 1. Valor: "vinte e cinco euros", "dez com cinquenta"
+      // 1. Valor - Melhorado para captar "vinte e cinco com noventa"
       const valueMatch = transcript.match(/(\d+(?:\s?e\s?|\s?com\s?|[,.]\s?)\d+|\d+)/);
       if (valueMatch) {
-        let valStr = valueMatch[1].replace(/\s?e\s?|\s?com\s?/, '.').replace(',', '.');
+        let valStr = valueMatch[1].replace(/\s?e\s?|\s?com\s?/, '.').replace(',', '.').replace(/\s/g, '');
         setAmount(valStr);
       }
       
-      // 2. Origem: "no continente", "na galp", "compras no pingo doce"
+      // 2. Origem - Melhorado com palavras-chave de ação
       const foundSource = sources.find(s => transcript.includes(s.toLowerCase()));
       if (foundSource) {
         setSource(foundSource);
         setShowNewSourceInput(false);
       } else {
-        // Tentar detetar palavras após "no", "na", "em"
-        const sourceMatch = transcript.match(/(?:no|na|em|origem|loja)\s+([a-z0-9]+)/i);
-        if (sourceMatch && sourceMatch[1]) {
-          setNewSourceName(sourceMatch[1]);
-          setShowNewSourceInput(true);
+        const sourceKeywords = ['no', 'na', 'em', 'origem', 'loja', 'supermercado', 'serviço', 'local'];
+        for (const kw of sourceKeywords) {
+          const regex = new RegExp(`${kw}\\s+([a-z0-9\\s]{3,20})`, 'i');
+          const match = transcript.match(regex);
+          if (match && match[1]) {
+            const detected = match[1].trim().split(' ')[0];
+            setNewSourceName(detected);
+            setShowNewSourceInput(true);
+            break;
+          }
         }
       }
 
-      // 3. Membros: "para a ana", "com o pedro", "da maria"
+      // 3. Membros - Melhoria: Padrões 'para o', 'da', 'do' + nomes
       const detectedMembers: string[] = [];
       members.forEach(m => {
         const nameLower = m.name.toLowerCase();
-        if (transcript.includes(nameLower) || transcript.includes(`para a ${nameLower}`) || transcript.includes(`com o ${nameLower}`)) {
+        const first = nameLower.split(' ')[0];
+        const patterns = [
+          `para o ${first}`, `para a ${first}`, `para ${first}`,
+          `da ${first}`, `do ${first}`, `de ${first}`,
+          `com o ${first}`, `com a ${first}`,
+          `gasto ${first}`, `foi ${first}`
+        ];
+        
+        const isMatched = patterns.some(p => transcript.includes(p)) || transcript.includes(nameLower);
+        if (isMatched) {
           detectedMembers.push(m.id);
         }
       });
       if (detectedMembers.length > 0) setSelectedMemberIds(detectedMembers);
 
-      // 4. Datas: "dia 20", "ontem", "hoje", "mês de maio"
-      if (transcript.includes('ontem')) {
+      // 4. Datas - Mapeamento exaustivo e deteção de "ontem", "hoje", "anteontem"
+      const wordToNum: Record<string, number> = {
+        'um': 1, 'dois': 2, 'três': 3, 'quatro': 4, 'cinco': 5, 'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9, 'dez': 10,
+        'onze': 11, 'doze': 12, 'treze': 13, 'catorze': 14, 'quinze': 15, 'dezasseis': 16, 'dezassete': 17, 'dezoito': 18, 'dezanove': 19, 'vinte': 20,
+        'trinta': 30, 'trinta e um': 31
+      };
+
+      if (transcript.includes('anteontem')) {
+        const d = new Date(); d.setDate(d.getDate() - 2);
+        setDate(d.toISOString().split('T')[0]);
+      } else if (transcript.includes('ontem')) {
         const d = new Date(); d.setDate(d.getDate() - 1);
         setDate(d.toISOString().split('T')[0]);
       } else if (transcript.includes('hoje')) {
         setDate(new Date().toISOString().split('T')[0]);
       } else {
-        const dayMatch = transcript.match(/dia (\d{1,2})/);
-        if (dayMatch) {
-          const d = new Date(); d.setDate(parseInt(dayMatch[1]));
-          setDate(d.toISOString().split('T')[0]);
+        // "dia doze"
+        let dayFound = false;
+        for (const [word, num] of Object.entries(wordToNum)) {
+          if (transcript.includes(`dia ${word}`)) {
+            const d = new Date(); d.setDate(num);
+            setDate(d.toISOString().split('T')[0]);
+            dayFound = true;
+            break;
+          }
+        }
+
+        if (!dayFound) {
+          const dayMatch = transcript.match(/dia (\d{1,2})/);
+          if (dayMatch) {
+            const d = new Date(); d.setDate(parseInt(dayMatch[1]));
+            setDate(d.toISOString().split('T')[0]);
+          }
         }
         
         const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -99,10 +135,10 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
         });
       }
 
-      // 5. Notas adicionais
-      if (transcript.includes('nota') || transcript.includes('observação')) {
-        const noteMatch = transcript.split(/nota|observação/);
-        if (noteMatch[1]) setNotes(noteMatch[1].trim());
+      // 5. Notas
+      if (transcript.includes('nota') || transcript.includes('observação') || transcript.includes('detalhe')) {
+        const parts = transcript.split(/nota|observação|detalhe/);
+        if (parts[1]) setNotes(parts[1].trim());
       }
     };
     
@@ -130,12 +166,12 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
   };
 
   return (
-    <div className="h-full bg-bg-dark flex flex-col p-4 overflow-y-auto no-scrollbar pb-24">
+    <div className="h-full bg-[#050c09] flex flex-col p-4 overflow-y-auto no-scrollbar pb-24">
       <header className="flex items-center justify-between pt-8 pb-4 shrink-0">
         <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-white/5 transition-all">
           <span className="material-symbols-outlined">close</span>
         </button>
-        <h2 className="text-lg font-bold">{editingExpense ? 'Editar Gasto' : 'Novo Gasto'}</h2>
+        <h2 className="text-lg font-bold">Novo Registo</h2>
         <button onClick={handleSave} className="text-primary font-black px-6 py-2 bg-primary/10 rounded-full active:scale-95 transition-all">OK</button>
       </header>
 
@@ -158,7 +194,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
           </div>
         </div>
 
-        <div className="bg-surface-dark rounded-[2.5rem] p-7 border border-white/5 space-y-8 shadow-2xl">
+        <div className="bg-[#11291f] rounded-[2.5rem] p-7 border border-white/5 space-y-8 shadow-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-secondary">calendar_month</span>
@@ -176,11 +212,11 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
               <button onClick={() => setShowNewSourceInput(!showNewSourceInput)} className="text-[10px] text-secondary font-black uppercase tracking-widest">{showNewSourceInput ? 'Cancelar' : 'Criar Nova'}</button>
             </div>
             {showNewSourceInput ? (
-              <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)} placeholder="Nome da loja ou serviço..." className="w-full bg-bg-dark border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all" />
+              <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)} placeholder="Nome da loja ou serviço..." className="w-full bg-[#050c09] border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all" />
             ) : (
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                 {sources.map(s => (
-                  <button key={s} onClick={() => setSource(s)} className={`px-5 py-3 rounded-2xl text-[10px] font-black shrink-0 border transition-all ${source === s ? 'bg-primary text-bg-dark border-primary' : 'bg-bg-dark border-white/5 text-gray-600'}`}>
+                  <button key={s} onClick={() => setSource(s)} className={`px-5 py-3 rounded-2xl text-[10px] font-black shrink-0 border transition-all ${source === s ? 'bg-primary text-bg-dark border-primary' : 'bg-[#050c09] border-white/5 text-gray-600'}`}>
                     {s.toUpperCase()}
                   </button>
                 ))}
@@ -194,9 +230,9 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
               <span className="text-sm font-bold">Quem gastou?</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setSelectedMemberIds([])} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>GERAL / AGREGADO</button>
+              <button onClick={() => setSelectedMemberIds([])} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'bg-[#050c09] border-white/5 text-gray-500'}`}>GERAL / AGREGADO</button>
               {members.map(m => (
-                <button key={m.id} onClick={() => toggleMember(m.id)} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all truncate ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>
+                <button key={m.id} onClick={() => toggleMember(m.id)} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all truncate ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'bg-[#050c09] border-white/5 text-gray-500'}`}>
                   {m.name.toUpperCase()}
                 </button>
               ))}
@@ -212,7 +248,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
               value={notes} 
               onChange={e => setNotes(e.target.value)} 
               placeholder="Notas adicionais..." 
-              className="w-full bg-bg-dark border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all min-h-[80px] resize-none"
+              className="w-full bg-[#050c09] border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all min-h-[80px] resize-none"
             />
           </div>
         </div>

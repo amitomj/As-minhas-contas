@@ -33,4 +33,4 @@ export interface AppData {
   user: UserAccount;
 }
 
-export type View = 'home' | 'transactions' | 'household' | 'export' | 'add-expense' | 'permission' | 'stats' | 'auth';
+export type View = 'home' | 'transactions' | 'household' | 'export' | 'add-expense' | 'permission' | 'stats' | 'auth' | 'settings';

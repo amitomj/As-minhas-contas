@@ -40,7 +40,7 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
     <div className="h-full flex flex-col pb-32 overflow-y-auto no-scrollbar relative">
       {/* Header */}
       <header className="flex items-center justify-between px-6 pt-12 pb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('settings')}>
           <img src={data.user.avatar} className="h-10 w-10 rounded-[12px] border-2 border-primary/20 shadow-lg" alt="Avatar" />
           <div>
             <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Olá,</p>
@@ -54,6 +54,9 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
               <span className="text-[9px] font-black uppercase">Instalar</span>
             </button>
           )}
+          <button onClick={() => setView('settings')} className="h-10 w-10 flex items-center justify-center rounded-xl bg-surface-dark text-gray-400 border border-white/5 active:scale-95 transition-all shadow-lg">
+            <span className="material-symbols-outlined text-xl">settings</span>
+          </button>
           <button onClick={onLogout} className="h-10 w-10 flex items-center justify-center rounded-xl bg-surface-dark text-red-500 border border-white/5 active:scale-95 transition-all shadow-lg">
             <span className="material-symbols-outlined text-xl">power_settings_new</span>
           </button>
@@ -112,7 +115,12 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
       {/* Recent Transactions Section */}
       <div className="mt-10 px-8 flex items-center justify-between">
         <h3 className="text-xl font-black tracking-tight text-white">Atividade</h3>
-        <button onClick={() => setView('transactions')} className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] bg-secondary/10 px-4 py-2 rounded-xl active:scale-95 transition-all">Ver Tudo</button>
+        <button 
+          onClick={() => { console.log('Ver tudo clicado'); setView('transactions'); }} 
+          className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] bg-secondary/10 px-4 py-2 rounded-xl active:scale-95 transition-all"
+        >
+          Ver Tudo
+        </button>
       </div>
 
       <div className="mt-4 px-4 flex flex-col gap-3">

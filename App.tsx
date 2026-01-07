@@ -10,6 +10,7 @@ import PermissionScreen from './components/PermissionScreen';
 import Stats from './components/Stats';
 import Transactions from './components/Transactions';
 import Auth from './components/Auth';
+import Settings from './components/Settings';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('auth');
@@ -79,7 +80,6 @@ const App: React.FC = () => {
     localStorage.setItem('financas_pro_session', JSON.stringify(updatedUser));
     setData(prev => ({ ...prev, user: updatedUser }));
     
-    // Também atualizar na lista global de utilizadores para logins futuros
     const storedUsers = JSON.parse(localStorage.getItem('financas_pro_users') || '[]');
     const updatedUsers = storedUsers.map((u: any) => 
       u.email === updatedUser.email ? { ...u, ...updatedUser } : u
@@ -164,6 +164,7 @@ const App: React.FC = () => {
       case 'export': return <ExportData expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'stats': return <Stats expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
       case 'transactions': return <Transactions expenses={data.expenses} members={data.members} onBack={() => setView('home')} onEdit={startEditExpense} onDelete={deleteExpense} />;
+      case 'settings': return <Settings user={data.user} onUpdateUser={handleUpdateUser} onBack={() => setView('home')} />;
       default: return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={startEditExpense} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} />;
     }
   };
