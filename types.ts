@@ -19,6 +19,7 @@ export interface Expense {
 export interface UserAccount {
   email: string;
   password?: string;
+  pin?: string;
   name: string;
   avatar: string;
   biometricEnabled?: boolean;

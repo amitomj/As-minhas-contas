@@ -11,8 +11,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#102216">
-    <link rel="apple-touch-icon" href="https://picsum.photos/seed/finpro/192">
+    <meta name="theme-color" content="#0a1a14">
+    <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=finpro-growth&backgroundColor=0d9488,1e40af,7e22ce">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,9 +27,11 @@
                 extend: {
                     colors: {
                         primary: '#13ec5b',
-                        'bg-dark': '#102216',
-                        'surface-dark': '#1c2e24',
-                        'card-dark': '#1a2c20'
+                        secondary: '#0ea5e9',
+                        accent: '#a855f7',
+                        'bg-dark': '#0a1a14',
+                        'surface-dark': '#11291f',
+                        'card-dark': '#163529'
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif']
@@ -40,7 +42,7 @@
     </script>
     <style>
         body {
-            background-color: #102216;
+            background-color: #0a1a14;
             color: white;
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
@@ -50,6 +52,9 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         input, select, textarea { user-select: text; }
+        .squircle {
+            border-radius: 20%;
+        }
     </style>
     <script type="importmap">
 {

@@ -2,22 +2,22 @@
 {
   "name": "Finanças Pro",
   "short_name": "FinPro",
-  "description": "Gestão Financeira Familiar com Biometria",
+  "description": "Gestão Financeira Inteligente",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#102216",
-  "theme_color": "#13ec5b",
+  "background_color": "#0a1a14",
+  "theme_color": "#0d9488",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/finpro/192",
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=finpro-growth&backgroundColor=0d9488,1e40af,7e22ce&shape1Color=ffffff&shape2Color=ffffff",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "https://picsum.photos/seed/finpro/512",
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=finpro-growth&backgroundColor=0d9488,1e40af,7e22ce&shape1Color=ffffff&shape2Color=ffffff",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/svg+xml"
     }
   ]
 }
