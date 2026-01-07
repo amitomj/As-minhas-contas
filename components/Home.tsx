@@ -16,7 +16,6 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, onUpdateUser, deferredPrompt, setDeferredPrompt }) => {
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
 
-  // Handle the PWA installation prompt
   const handleInstallClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -27,10 +26,10 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
   };
 
   return (
-    <div className="h-full flex flex-col pb-32 overflow-y-auto no-scrollbar relative">
+    <div className="h-full flex flex-col pb-32 overflow-y-auto no-scrollbar relative z-10">
       <header className="flex items-center justify-between px-6 pt-12 pb-4 shrink-0 z-50">
-        <div className="flex items-center gap-3 active:opacity-70 transition-opacity" onClick={() => setView('settings')}>
-          <img src={data.user.avatar} className="h-10 w-10 rounded-xl border-2 border-primary/20 shadow-lg shadow-primary/5" alt="Avatar" />
+        <div className="flex items-center gap-3 active:opacity-70 transition-opacity cursor-pointer" onClick={() => setView('settings')}>
+          <img src={data.user.avatar} className="h-10 w-10 rounded-xl border-2 border-primary/20 shadow-lg" alt="Avatar" />
           <div>
             <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest leading-none mb-1">Olá,</p>
             <h2 className="text-sm font-black text-white">{data.user.name}</h2>
@@ -43,7 +42,7 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
               className="h-11 px-4 flex items-center gap-2 rounded-xl bg-primary/10 text-primary active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-lg">install_mobile</span>
-              <span className="text-[10px] font-black uppercase tracking-widest">Instalar App</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Instalar</span>
             </button>
           )}
           <button onClick={onLogout} className="h-11 w-11 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 text-red-400 active:scale-90 transition-all">
@@ -52,7 +51,7 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
         </div>
       </header>
 
-      <main className="flex-1 px-6 space-y-10">
+      <main className="flex-1 px-6 space-y-10 relative z-20">
         <section className="mt-4">
           <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mb-3">Saldo Disponível</p>
           <div className="flex items-baseline gap-2">
@@ -64,11 +63,17 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
         </section>
 
         <section className="grid grid-cols-2 gap-4">
-          <button onClick={() => setView('add-expense')} className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-gradient-to-br from-secondary to-primary text-white shadow-2xl shadow-primary/20 active:scale-95 transition-all">
+          <button 
+            onClick={(e) => { e.preventDefault(); setView('add-expense'); }} 
+            className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-gradient-to-br from-secondary to-primary text-white shadow-2xl shadow-primary/20 active:scale-95 transition-all cursor-pointer"
+          >
             <span className="material-symbols-outlined text-4xl mb-2 font-black">add_circle</span>
             <span className="text-[10px] font-black uppercase tracking-widest text-center">Novo Gasto</span>
           </button>
-          <button onClick={() => setView('export')} className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-[#11291f] border border-white/5 text-white active:scale-95 transition-all">
+          <button 
+            onClick={(e) => { e.preventDefault(); setView('export'); }} 
+            className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-surface-dark border border-white/5 text-white active:scale-95 transition-all cursor-pointer"
+          >
             <span className="material-symbols-outlined text-4xl mb-2 text-secondary">file_export</span>
             <span className="text-[10px] font-black uppercase tracking-widest text-center">Exportar</span>
           </button>
@@ -77,14 +82,19 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Últimos Gastos</h3>
-            <button onClick={() => setView('transactions')} className="text-[10px] text-primary font-black uppercase tracking-widest">Ver Tudo</button>
+            <button 
+              onClick={(e) => { e.preventDefault(); setView('transactions'); }} 
+              className="text-[10px] text-primary font-black uppercase tracking-widest py-2 px-3 bg-primary/5 rounded-lg active:scale-95 transition-all cursor-pointer"
+            >
+              Ver Tudo
+            </button>
           </div>
           
           <div className="space-y-3">
             {data.expenses.slice(0, 5).map(exp => (
               <div key={exp.id} className="relative group">
                 <div 
-                  className={`flex items-center justify-between p-5 bg-[#11291f] rounded-[1.8rem] border transition-all active:scale-[0.98] ${actionMenuId === exp.id ? 'border-primary ring-1 ring-primary/20' : 'border-white/5'}`}
+                  className={`flex items-center justify-between p-5 bg-surface-dark rounded-[1.8rem] border transition-all active:scale-[0.98] cursor-pointer ${actionMenuId === exp.id ? 'border-primary' : 'border-white/5'}`}
                   onClick={() => setActionMenuId(actionMenuId === exp.id ? null : exp.id)}
                 >
                   <div className="flex items-center gap-4">
@@ -102,7 +112,7 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
                 </div>
 
                 {actionMenuId === exp.id && (
-                  <div className="absolute right-4 top-16 bg-[#050c09] border border-white/10 rounded-2xl shadow-2xl z-50 p-2 min-w-[140px] animate-in fade-in zoom-in-95">
+                  <div className="absolute right-4 top-16 bg-bg-dark border border-white/10 rounded-2xl shadow-2xl z-50 p-2 min-w-[140px] animate-in fade-in zoom-in-95">
                     <button 
                       onClick={(e) => { e.stopPropagation(); onEdit(exp); setActionMenuId(null); }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-[11px] font-bold text-blue-400 hover:bg-white/5 rounded-xl transition-colors"
@@ -119,13 +129,6 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
                 )}
               </div>
             ))}
-            
-            {data.expenses.length === 0 && (
-              <div className="py-12 flex flex-col items-center justify-center text-gray-700 gap-4">
-                <span className="material-symbols-outlined text-6xl opacity-20">receipt_long</span>
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Nenhum gasto registado</p>
-              </div>
-            )}
           </div>
         </section>
       </main>

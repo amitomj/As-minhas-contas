@@ -20,6 +20,11 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
   const [showNewSourceInput, setShowNewSourceInput] = useState(false);
   const [newSourceName, setNewSourceName] = useState('');
 
+  const months: Record<string, string> = {
+    'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04', 'maio': '05', 'junho': '06',
+    'julho': '07', 'agosto': '08', 'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+  };
+
   const toggleMember = (id: string) => {
     setSelectedMemberIds(prev => 
       prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
@@ -27,13 +32,14 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
   };
 
   const handleVoiceInput = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window)) {
-      alert("Comandos de voz não suportados neste navegador.");
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert("Comandos de voz não suportados neste telemóvel ou navegador.");
       return;
     }
 
-    // @ts-ignore
-    const recognition = new webkitSpeechRecognition();
+    const recognition = new SpeechRecognition();
     recognition.lang = 'pt-PT';
     recognition.continuous = false;
     recognition.interimResults = false;
@@ -43,73 +49,53 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
     
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.toLowerCase();
-      console.log("Comando de voz detetado:", transcript);
+      console.log("Comando:", transcript);
       
+      // Capturar Valor
       const valueMatch = transcript.match(/(\d+(?:\s?e\s?|\s?com\s?|[,.]\s?)\d+|\d+)/);
       if (valueMatch) {
         let valStr = valueMatch[1].replace(/\s?e\s?|\s?com\s?/, '.').replace(',', '.').replace(/\s/g, '');
         setAmount(valStr);
       }
       
+      // Capturar Data (Hoje, Ontem, Dia X)
+      if (transcript.includes('hoje')) {
+        setDate(new Date().toISOString().split('T')[0]);
+      } else if (transcript.includes('ontem')) {
+        const d = new Date(); d.setDate(d.getDate() - 1);
+        setDate(d.toISOString().split('T')[0]);
+      } else if (transcript.includes('anteontem')) {
+        const d = new Date(); d.setDate(d.getDate() - 2);
+        setDate(d.toISOString().split('T')[0]);
+      } else {
+        // Detetar "dia X de Mês"
+        const dayMatch = transcript.match(/dia\s?(\d{1,2})/);
+        if (dayMatch) {
+          let targetDay = dayMatch[1].padStart(2, '0');
+          let targetMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+          let targetYear = new Date().getFullYear();
+
+          for (const [mName, mNum] of Object.entries(months)) {
+            if (transcript.includes(mName)) {
+              targetMonth = mNum;
+              break;
+            }
+          }
+          setDate(`${targetYear}-${targetMonth}-${targetDay}`);
+        }
+      }
+
+      // Detetar Origem
       const foundSource = sources.find(s => transcript.includes(s.toLowerCase()));
       if (foundSource) {
         setSource(foundSource);
         setShowNewSourceInput(false);
-      } else {
-        const sourceKeywords = ['no', 'na', 'em', 'origem', 'loja', 'supermercado', 'serviço', 'local'];
-        for (const kw of sourceKeywords) {
-          const regex = new RegExp(`${kw}\\s+([a-z0-9\\s]{3,20})`, 'i');
-          const match = transcript.match(regex);
-          if (match && match[1]) {
-            const detected = match[1].trim().split(' ')[0];
-            setNewSourceName(detected);
-            setShowNewSourceInput(true);
-            break;
-          }
-        }
-      }
-
-      const detectedMembers: string[] = [];
-      members.forEach(m => {
-        const nameLower = m.name.toLowerCase();
-        const first = nameLower.split(' ')[0];
-        const patterns = [
-          `para o ${first}`, `para a ${first}`, `para ${first}`,
-          `da ${first}`, `do ${first}`, `de ${first}`,
-          `com o ${first}`, `com a ${first}`,
-          `gasto ${first}`, `foi ${first}`
-        ];
-        
-        const isMatched = patterns.some(p => transcript.includes(p)) || transcript.includes(nameLower);
-        if (isMatched) {
-          detectedMembers.push(m.id);
-        }
-      });
-      if (detectedMembers.length > 0) setSelectedMemberIds(detectedMembers);
-
-      if (transcript.includes('anteontem')) {
-        const d = new Date(); d.setDate(d.getDate() - 2);
-        setDate(d.toISOString().split('T')[0]);
-      } else if (transcript.includes('ontem')) {
-        const d = new Date(); d.setDate(d.getDate() - 1);
-        setDate(d.toISOString().split('T')[0]);
-      } else if (transcript.includes('hoje')) {
-        setDate(new Date().toISOString().split('T')[0]);
-      }
-
-      if (transcript.includes('nota') || transcript.includes('observação') || transcript.includes('detalhe')) {
-        const parts = transcript.split(/nota|observação|detalhe/);
-        if (parts[1]) setNotes(parts[1].trim());
       }
     };
     
-    recognition.onerror = (event: any) => {
-      console.error("Erro voz:", event.error);
-      setIsListening(false);
-    };
-
+    recognition.onerror = () => setIsListening(false);
     recognition.start();
-  }, [sources, members, date]);
+  }, [sources, members]);
 
   const handleSave = () => {
     const finalSource = showNewSourceInput ? newSourceName : source;
@@ -127,7 +113,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
   };
 
   return (
-    <div className="h-full bg-[#050c09] flex flex-col p-4 overflow-y-auto no-scrollbar pb-24">
+    <div className="h-full bg-bg-dark flex flex-col p-4 overflow-y-auto no-scrollbar pb-32">
       <header className="flex items-center justify-between pt-8 pb-4 shrink-0">
         <button onClick={onBack} className="h-12 w-12 flex items-center justify-center rounded-full bg-surface-dark border border-white/5 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-2xl font-black">arrow_back</span>
@@ -138,7 +124,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
 
       <main className="flex-1 space-y-8 pt-6">
         <div className="flex flex-col items-center gap-4">
-          <span className="text-[10px] text-gray-600 font-black uppercase tracking-[0.3em]">Valor da Transação</span>
+          <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em]">Valor da Transação</span>
           <div className="flex items-center gap-6">
             <input 
               type="number" inputMode="decimal" value={amount} 
@@ -155,7 +141,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
           </div>
         </div>
 
-        <div className="bg-[#11291f] rounded-[2.5rem] p-7 border border-white/5 space-y-8 shadow-2xl">
+        <div className="bg-surface-dark rounded-[2.5rem] p-7 border border-white/5 space-y-8 shadow-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-secondary">calendar_month</span>
@@ -173,11 +159,11 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
               <button onClick={() => setShowNewSourceInput(!showNewSourceInput)} className="text-[10px] text-secondary font-black uppercase tracking-widest active:opacity-60">{showNewSourceInput ? 'Cancelar' : 'Criar Nova'}</button>
             </div>
             {showNewSourceInput ? (
-              <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)} placeholder="Nome da loja ou serviço..." className="w-full bg-[#050c09] border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all" />
+              <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)} placeholder="Nome da loja ou serviço..." className="w-full bg-bg-dark border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all" />
             ) : (
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                 {sources.map(s => (
-                  <button key={s} onClick={() => setSource(s)} className={`px-5 py-3 rounded-2xl text-[10px] font-black shrink-0 border transition-all ${source === s ? 'bg-primary text-bg-dark border-primary' : 'bg-[#050c09] border-white/5 text-gray-600 active:bg-white/5'}`}>
+                  <button key={s} onClick={() => setSource(s)} className={`px-5 py-3 rounded-2xl text-[10px] font-black shrink-0 border transition-all ${source === s ? 'bg-primary text-bg-dark border-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>
                     {s.toUpperCase()}
                   </button>
                 ))}
@@ -188,29 +174,16 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-secondary">group</span>
-              <span className="text-sm font-bold">Quem gastou?</span>
+              <span className="text-sm font-bold">Atribuir a:</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setSelectedMemberIds([])} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all active:scale-95 ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'bg-[#050c09] border-white/5 text-gray-500'}`}>GERAL / AGREGADO</button>
+              <button onClick={() => setSelectedMemberIds([])} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all active:scale-95 ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>GERAL / AGREGADO</button>
               {members.map(m => (
-                <button key={m.id} onClick={() => toggleMember(m.id)} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all truncate active:scale-95 ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'bg-[#050c09] border-white/5 text-gray-500'}`}>
+                <button key={m.id} onClick={() => toggleMember(m.id)} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all truncate active:scale-95 ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>
                   {m.name.toUpperCase()}
                 </button>
               ))}
             </div>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-secondary">notes</span>
-              <span className="text-sm font-bold">Notas</span>
-            </div>
-            <textarea 
-              value={notes} 
-              onChange={e => setNotes(e.target.value)} 
-              placeholder="Notas adicionais..." 
-              className="w-full bg-[#050c09] border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all min-h-[80px] resize-none"
-            />
           </div>
         </div>
       </main>
