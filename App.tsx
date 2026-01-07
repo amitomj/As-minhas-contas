@@ -36,12 +36,8 @@ const App: React.FC = () => {
         const user = JSON.parse(savedSession);
         setCurrentUser(user);
         const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
-        if (userData) {
-          setData(JSON.parse(userData));
-        }
-      } catch (e) {
-        console.error("Erro ao carregar sessão");
-      }
+        if (userData) setData(JSON.parse(userData));
+      } catch (e) { console.error(e); }
     }
     setInitialized(true);
   }, []);
@@ -56,17 +52,13 @@ const App: React.FC = () => {
     setCurrentUser(user);
     localStorage.setItem('financas_pro_session', JSON.stringify(user));
     localStorage.setItem('financas_pro_last_email', user.email);
-    
     const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
-    if (userData) {
-      setData(JSON.parse(userData));
-    } else {
+    if (userData) setData(JSON.parse(userData));
+    else {
       const newData = { ...INITIAL_DATA, user, expenses: [], balance: 0 };
       setData(newData);
-      localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
     }
-    const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
-    setView(hasPermission ? 'home' : 'permission');
+    setView('home');
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -79,11 +71,6 @@ const App: React.FC = () => {
     setCurrentUser(updatedUser);
     localStorage.setItem('financas_pro_session', JSON.stringify(updatedUser));
     setData(prev => ({ ...prev, user: updatedUser }));
-  }, []);
-
-  const grantPermission = useCallback(() => {
-    localStorage.setItem('financas_pro_permission', 'granted');
-    setView('home');
   }, []);
 
   const saveExpense = useCallback((expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
@@ -120,19 +107,13 @@ const App: React.FC = () => {
   const deleteExpense = useCallback((id: string) => {
     setData(prev => {
       const amount = prev.expenses.find(e => e.id === id)?.amount || 0;
-      return {
-        ...prev,
-        expenses: prev.expenses.filter(e => e.id !== id),
-        balance: prev.balance + amount
-      };
+      return { ...prev, expenses: prev.expenses.filter(e => e.id !== id), balance: prev.balance + amount };
     });
   }, []);
 
   const renderView = () => {
     if (view === 'auth') return <Auth onLogin={handleLogin} />;
-    
     switch (view) {
-      case 'permission': return <PermissionScreen onGrant={grantPermission} />;
       case 'home': return <Home data={data} setView={setView} onLogout={handleLogout} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} onUpdateUser={handleUpdateUser} deferredPrompt={deferredPrompt} setDeferredPrompt={setDeferredPrompt} />;
       case 'add-expense': return <AddExpense sources={data.sources} members={data.members} onSave={saveExpense} onBack={() => { setView('home'); setEditingExpense(undefined); }} editingExpense={editingExpense} />;
       case 'household': return <HouseholdManagement members={data.members} onUpdate={(m) => setData(prev => ({ ...prev, members: m }))} onBack={() => setView('home')} />;
@@ -145,41 +126,29 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto h-screen relative bg-bg-dark overflow-hidden font-sans border-x border-white/5 flex flex-col">
+    <div className="max-w-md mx-auto h-screen relative bg-bg-dark overflow-hidden flex flex-col border-x border-white/5">
       <div className="flex-1 overflow-hidden relative">
         {renderView()}
       </div>
       
       {view !== 'auth' && view !== 'permission' && view !== 'add-expense' && (
-        <nav className="shrink-0 bg-bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-8 pt-3 z-[100]">
-          <div className="flex justify-around items-center px-4">
-            <button 
-              onClick={() => setView('home')} 
-              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}
-            >
-              <span className="material-symbols-outlined text-[28px]">home</span>
-              <span className="text-[10px] font-bold">Início</span>
+        <nav className="shrink-0 bg-bg-dark border-t border-white/5 pb-10 pt-4 z-[999] relative">
+          <div className="flex justify-around items-center px-2">
+            <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[30px] font-bold">home</span>
+              <span className="text-[10px] font-bold uppercase">Início</span>
             </button>
-            <button 
-              onClick={() => setView('transactions')} 
-              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'transactions' || view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}
-            >
-              <span className="material-symbols-outlined text-[28px]">receipt_long</span>
-              <span className="text-[10px] font-bold">Extrato</span>
+            <button onClick={() => setView('transactions')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[30px] font-bold">receipt_long</span>
+              <span className="text-[10px] font-bold uppercase">Extrato</span>
             </button>
-            <button 
-              onClick={() => setView('stats')} 
-              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}
-            >
-              <span className="material-symbols-outlined text-[28px]">monitoring</span>
-              <span className="text-[10px] font-bold">Gráfico</span>
+            <button onClick={() => setView('stats')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[30px] font-bold">monitoring</span>
+              <span className="text-[10px] font-bold uppercase">Gráfico</span>
             </button>
-            <button 
-              onClick={() => setView('household')} 
-              className={`flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-90 ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}
-            >
-              <span className="material-symbols-outlined text-[28px]">group</span>
-              <span className="text-[10px] font-bold">Agregado</span>
+            <button onClick={() => setView('household')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[30px] font-bold">group</span>
+              <span className="text-[10px] font-bold uppercase">Agregado</span>
             </button>
           </div>
         </nav>

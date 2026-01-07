@@ -44,7 +44,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     
     if (!SpeechRecognition) {
-      alert("Comandos de voz não suportados neste telemóvel ou navegador.");
+      alert("Comandos de voz não suportados neste telemóvel.");
       return;
     }
 
@@ -58,26 +58,22 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
     
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.toLowerCase();
-      console.log("Comando de Voz:", transcript);
+      console.log("Comando:", transcript);
       
-      // Capturar Valor
+      // 1. Valor
       const valueMatch = transcript.match(/(\d+(?:\s?e\s?|\s?com\s?|[,.]\s?)\d+|\d+)/);
       if (valueMatch) {
         let valStr = valueMatch[1].replace(/\s?e\s?|\s?com\s?/, '.').replace(',', '.').replace(/\s/g, '');
         setAmount(valStr);
       }
       
-      // Capturar Data
+      // 2. Data
       if (transcript.includes('hoje')) {
         setDate(new Date().toISOString().split('T')[0]);
       } else if (transcript.includes('ontem')) {
         const d = new Date(); d.setDate(d.getDate() - 1);
         setDate(d.toISOString().split('T')[0]);
-      } else if (transcript.includes('anteontem')) {
-        const d = new Date(); d.setDate(d.getDate() - 2);
-        setDate(d.toISOString().split('T')[0]);
       } else {
-        // Detetar "dia X" ou "dia vinte e cinco"
         let dayFound = "";
         const numericMatch = transcript.match(/dia\s?(\d{1,2})/);
         if (numericMatch) {
@@ -93,67 +89,86 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
 
         if (dayFound) {
           let targetMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
-          let targetYear = new Date().getFullYear();
           for (const [mName, mNum] of Object.entries(months)) {
-            if (transcript.includes(mName)) {
-              targetMonth = mNum;
-              break;
-            }
+            if (transcript.includes(mName)) { targetMonth = mNum; break; }
           }
-          setDate(`${targetYear}-${targetMonth}-${dayFound}`);
+          setDate(`${new Date().getFullYear()}-${targetMonth}-${dayFound}`);
         }
       }
 
-      // Detetar Origem
+      // 3. Origem
       const foundSource = sources.find(s => transcript.includes(s.toLowerCase()));
       if (foundSource) {
         setSource(foundSource);
         setShowNewSourceInput(false);
       }
+
+      // 4. Membros (NOVO)
+      const foundMemberIds: string[] = [];
+      members.forEach(m => {
+        const firstName = m.name.split(' ')[0].toLowerCase();
+        if (transcript.includes(m.name.toLowerCase()) || transcript.includes(firstName)) {
+          foundMemberIds.push(m.id);
+        }
+      });
+      if (foundMemberIds.length > 0) {
+        setSelectedMemberIds(foundMemberIds);
+      }
     };
     
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (e: any) => {
+      console.error(e);
+      setIsListening(false);
+    };
     recognition.start();
   }, [sources, members]);
 
+  // Added handleSave function to handle data validation and saving
   const handleSave = () => {
-    const finalSource = showNewSourceInput ? newSourceName : source;
-    if (!amount || !finalSource) {
-      alert("Por favor, preencha o valor e a origem.");
+    const numAmount = parseFloat(amount.replace(',', '.'));
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert('Por favor, introduza um valor válido.');
       return;
     }
-    onSave({ 
-      amount: parseFloat(amount), 
-      date, 
-      source: finalSource, 
-      memberIds: selectedMemberIds, 
-      notes 
+    
+    const finalSource = showNewSourceInput ? newSourceName : source;
+    if (!finalSource) {
+      alert('Por favor, selecione ou introduza uma origem.');
+      return;
+    }
+
+    onSave({
+      amount: numAmount,
+      date,
+      source: finalSource,
+      memberIds: selectedMemberIds,
+      notes
     });
   };
 
   return (
     <div className="h-full bg-bg-dark flex flex-col p-4 overflow-y-auto no-scrollbar pb-32">
       <header className="flex items-center justify-between pt-8 pb-4 shrink-0">
-        <button onClick={onBack} className="h-12 w-12 flex items-center justify-center rounded-full bg-surface-dark border border-white/5 active:scale-90 transition-all">
+        <button onClick={onBack} className="h-14 w-14 flex items-center justify-center rounded-full bg-surface-dark border border-white/5 shadow-lg">
           <span className="material-symbols-outlined text-2xl font-black">arrow_back</span>
         </button>
         <h2 className="text-lg font-bold">Novo Registo</h2>
-        <button onClick={handleSave} className="text-primary font-black px-6 py-2 bg-primary/10 rounded-full active:scale-95 transition-all">OK</button>
+        <button onClick={() => { handleSave(); }} className="text-primary font-black px-8 py-3 bg-primary/10 rounded-full">OK</button>
       </header>
 
       <main className="flex-1 space-y-8 pt-6">
         <div className="flex flex-col items-center gap-4">
-          <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em]">Valor da Transação</span>
+          <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em]">Valor</span>
           <div className="flex items-center gap-6">
             <input 
               type="number" inputMode="decimal" value={amount} 
               onChange={e => setAmount(e.target.value)} 
               placeholder="0,00" 
-              className="bg-transparent text-6xl font-black w-64 text-center border-none focus:ring-0 placeholder-white/5 text-white" 
+              className="bg-transparent text-6xl font-black w-64 text-center border-none focus:ring-0 text-white" 
             />
             <button 
               onClick={handleVoiceInput} 
-              className={`h-16 w-16 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening ? 'bg-red-500 animate-pulse text-white' : 'bg-primary/20 text-primary border-2 border-primary/20 active:scale-90'}`}
+              className={`h-16 w-16 rounded-full flex items-center justify-center transition-all ${isListening ? 'bg-red-500 animate-pulse text-white' : 'bg-primary text-bg-dark shadow-xl'}`}
             >
               <span className="material-symbols-outlined text-3xl font-bold">{isListening ? 'graphic_eq' : 'mic'}</span>
             </button>
@@ -161,12 +176,12 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
         </div>
 
         <div className="bg-surface-dark rounded-[2.5rem] p-7 border border-white/5 space-y-8 shadow-2xl">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between py-2">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-secondary">calendar_month</span>
               <span className="text-sm font-bold">Data</span>
             </div>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none text-sm text-gray-400 font-bold p-0 text-right focus:ring-0" />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none text-sm text-gray-300 font-bold p-2 text-right focus:ring-0" />
           </div>
 
           <div className="space-y-4">
@@ -175,10 +190,10 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
                 <span className="material-symbols-outlined text-secondary">store</span>
                 <span className="text-sm font-bold">Origem</span>
               </div>
-              <button onClick={() => setShowNewSourceInput(!showNewSourceInput)} className="text-[10px] text-secondary font-black uppercase tracking-widest active:opacity-60">{showNewSourceInput ? 'Cancelar' : 'Criar Nova'}</button>
+              <button onClick={() => setShowNewSourceInput(!showNewSourceInput)} className="text-[10px] text-secondary font-black uppercase tracking-widest p-2">Novo</button>
             </div>
             {showNewSourceInput ? (
-              <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)} placeholder="Nome da loja ou serviço..." className="w-full bg-bg-dark border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-secondary transition-all" />
+              <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)} placeholder="Loja..." className="w-full bg-bg-dark border border-white/10 rounded-2xl p-4 text-sm text-white" />
             ) : (
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                 {sources.map(s => (
@@ -193,12 +208,12 @@ const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBac
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-secondary">group</span>
-              <span className="text-sm font-bold">Atribuir a:</span>
+              <span className="text-sm font-bold">Para:</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setSelectedMemberIds([])} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all active:scale-95 ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>GERAL / AGREGADO</button>
+              <button onClick={() => setSelectedMemberIds([])} className={`px-4 py-4 rounded-2xl text-[10px] font-bold border ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>AGREGADO</button>
               {members.map(m => (
-                <button key={m.id} onClick={() => toggleMember(m.id)} className={`px-4 py-3 rounded-2xl text-[10px] font-bold border transition-all truncate active:scale-95 ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>
+                <button key={m.id} onClick={() => toggleMember(m.id)} className={`px-4 py-4 rounded-2xl text-[10px] font-bold border truncate ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'bg-bg-dark border-white/5 text-gray-500'}`}>
                   {m.name.toUpperCase()}
                 </button>
               ))}

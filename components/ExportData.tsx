@@ -10,123 +10,92 @@ interface Props {
 
 const ExportData: React.FC<Props> = ({ expenses, members, onBack }) => {
   const [format, setFormat] = useState<'excel' | 'word'>('excel');
-  const [exporting, setExporting] = useState(false);
 
   const handleExport = () => {
     if (expenses.length === 0) {
       alert("Não existem dados para exportar.");
       return;
     }
-    setExporting(true);
     
-    // Pequeno atraso para feedback visual
-    setTimeout(() => {
-      let content = "";
-      if (format === 'excel') {
-        content = "Data;Origem;Valor;Membros;Notas\n";
-        expenses.forEach(e => {
-          const mNames = e.memberIds.length === 0 
-            ? 'Agregado' 
-            : e.memberIds.map(id => members.find(m => m.id === id)?.name).join('|');
-          content += `${e.date};${e.source};${e.amount.toFixed(2).replace('.', ',')};${mNames};${e.notes || ''}\n`;
+    // IMPORTANTE: No telemóvel, NÃO usar setTimeout. O download deve ser imediato ao clique.
+    let content = "";
+    if (format === 'excel') {
+      content = "Data;Origem;Valor;Membros;Notas\n";
+      expenses.forEach(e => {
+        const mNames = e.memberIds.length === 0 
+          ? 'Agregado' 
+          : e.memberIds.map(id => members.find(m => m.id === id)?.name).join('|');
+        content += `${e.date};${e.source};${e.amount.toFixed(2).replace('.', ',')};${mNames};${e.notes || ''}\n`;
+      });
+    } else {
+      content = `RELATÓRIO DE FINANÇAS - ${new Date().toLocaleDateString('pt-PT')}\n`;
+      content += `==========================================\n\n`;
+      const grouped: Record<string, Expense[]> = {};
+      expenses.forEach(e => {
+        if (!grouped[e.source]) grouped[e.source] = [];
+        grouped[e.source].push(e);
+      });
+      Object.entries(grouped).forEach(([source, items]) => {
+        content += `ORIGEM: ${source.toUpperCase()}\n`;
+        items.forEach(item => {
+          const mNames = item.memberIds.length === 0 ? 'Agregado' : item.memberIds.map(id => members.find(m => m.id === id)?.name).join(', ');
+          content += `${item.date} | €${item.amount.toFixed(2)} | Membros: ${mNames}\n`;
         });
-      } else {
-        content = `RELATÓRIO DE FINANÇAS - ${new Date().toLocaleDateString('pt-PT')}\n`;
-        content += `==========================================\n\n`;
-        
-        const grouped: Record<string, Expense[]> = {};
-        expenses.forEach(e => {
-          if (!grouped[e.source]) grouped[e.source] = [];
-          grouped[e.source].push(e);
-        });
+        content += `\n`;
+      });
+    }
 
-        Object.entries(grouped).forEach(([source, items]) => {
-          content += `ORIGEM: ${source.toUpperCase()}\n`;
-          items.forEach(item => {
-            const mNames = item.memberIds.length === 0 ? 'Agregado' : item.memberIds.map(id => members.find(m => m.id === id)?.name).join(', ');
-            content += `${item.date} | €${item.amount.toFixed(2)} | Membros: ${mNames}\n`;
-          });
-          content += `\n`;
-        });
-      }
-
-      try {
-        const mimeType = format === 'excel' ? 'text/csv;charset=utf-8' : 'text/plain;charset=utf-8';
-        const fileName = `financas_pro_${new Date().getTime()}.${format === 'excel' ? 'csv' : 'txt'}`;
-        
-        // Adicionar BOM para Excel (Byte Order Mark)
-        const blob = new Blob([format === 'excel' ? "\uFEFF" + content : content], { type: mimeType });
-        const url = window.URL.createObjectURL(blob);
-        
-        const link = document.createElement('a');
-        link.style.display = 'none';
-        link.href = url;
-        link.setAttribute('download', fileName);
-        
-        document.body.appendChild(link);
-        link.click();
-        
-        // Limpeza
-        setTimeout(() => {
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        }, 100);
-        
-        setExporting(false);
-      } catch (err) {
-        console.error("Erro na exportação:", err);
-        alert("Erro ao gerar o ficheiro. Tente novamente.");
-        setExporting(false);
-      }
-    }, 500);
+    try {
+      const mimeType = format === 'excel' ? 'text/csv;charset=utf-8' : 'text/plain;charset=utf-8';
+      const fileName = `financas_${new Date().getTime()}.${format === 'excel' ? 'csv' : 'txt'}`;
+      const blob = new Blob([format === 'excel' ? "\uFEFF" + content : content], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Erro ao exportar no telemóvel. Verifique as permissões do browser.");
+    }
   };
 
   return (
     <div className="h-full bg-bg-dark flex flex-col p-4 overflow-y-auto no-scrollbar">
       <header className="flex items-center gap-4 pt-10 pb-6 shrink-0">
-        <button onClick={() => onBack()} className="h-12 w-12 flex items-center justify-center rounded-full bg-surface-dark border border-white/5 active:scale-90 transition-all">
+        <button onClick={onBack} className="h-14 w-14 flex items-center justify-center rounded-full bg-surface-dark border border-white/5">
           <span className="material-symbols-outlined text-2xl">arrow_back</span>
         </button>
-        <h2 className="text-xl font-black">Exportar Dados</h2>
+        <h2 className="text-xl font-black">Exportar</h2>
       </header>
 
       <div className="space-y-8 flex-1 px-2">
         <div className="bg-surface-dark rounded-[2.5rem] p-8 border border-white/5 space-y-6 shadow-2xl">
-          <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center">Escolha o Formato</h3>
           <div className="grid grid-cols-2 gap-4">
             <button 
               onClick={() => setFormat('excel')} 
-              className={`py-8 rounded-3xl border transition-all flex flex-col items-center gap-3 active:scale-95 ${format === 'excel' ? 'border-primary text-primary bg-primary/10' : 'border-white/5 text-gray-600 bg-bg-dark/50'}`}
+              className={`py-8 rounded-3xl border flex flex-col items-center gap-3 ${format === 'excel' ? 'border-primary text-primary bg-primary/10' : 'border-white/5 text-gray-600 bg-bg-dark/50'}`}
             >
               <span className="material-symbols-outlined text-4xl">table_view</span>
-              <span className="text-[11px] font-black">EXCEL</span>
+              <span className="text-[11px] font-black uppercase">Excel</span>
             </button>
             <button 
               onClick={() => setFormat('word')} 
-              className={`py-8 rounded-3xl border transition-all flex flex-col items-center gap-3 active:scale-95 ${format === 'word' ? 'border-primary text-primary bg-primary/10' : 'border-white/5 text-gray-600 bg-bg-dark/50'}`}
+              className={`py-8 rounded-3xl border flex flex-col items-center gap-3 ${format === 'word' ? 'border-primary text-primary bg-primary/10' : 'border-white/5 text-gray-600 bg-bg-dark/50'}`}
             >
               <span className="material-symbols-outlined text-4xl">description</span>
-              <span className="text-[11px] font-black">WORD</span>
+              <span className="text-[11px] font-black uppercase">Word</span>
             </button>
           </div>
 
           <button 
-            onClick={() => handleExport()}
-            disabled={exporting || expenses.length === 0}
-            className={`w-full py-6 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl transition-all active:scale-95 ${exporting || expenses.length === 0 ? 'bg-gray-800 text-gray-600 opacity-50' : 'bg-gradient-to-r from-secondary to-primary text-white'}`}
+            onClick={handleExport}
+            className="w-full py-6 bg-primary text-bg-dark font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20"
           >
-            {exporting ? "A gerar..." : "Descarregar Ficheiro"}
+            Descarregar Ficheiro
           </button>
-          
-          {expenses.length === 0 && (
-            <p className="text-center text-[10px] text-red-400 font-bold uppercase">Sem dados para exportar</p>
-          )}
-        </div>
-        
-        <div className="p-6 bg-surface-dark/40 rounded-3xl border border-white/5">
-           <p className="text-[10px] text-gray-500 font-bold leading-relaxed uppercase tracking-widest text-center">
-             O ficheiro será guardado na pasta de Downloads do seu telemóvel.
-           </p>
         </div>
       </div>
     </div>
