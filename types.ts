@@ -16,15 +16,19 @@ export interface Expense {
   timestamp: number;
 }
 
+export interface UserAccount {
+  email: string;
+  password?: string;
+  name: string;
+  avatar: string;
+}
+
 export interface AppData {
   balance: number;
   expenses: Expense[];
   members: Member[];
   sources: string[];
-  user: {
-    name: string;
-    avatar: string;
-  };
+  user: UserAccount;
 }
 
-export type View = 'home' | 'transactions' | 'household' | 'export' | 'add-expense' | 'permission';
+export type View = 'home' | 'transactions' | 'household' | 'export' | 'add-expense' | 'permission' | 'stats' | 'auth';

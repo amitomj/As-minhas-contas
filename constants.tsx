@@ -4,6 +4,8 @@ import { AppData } from './types';
 export const INITIAL_DATA: AppData = {
   balance: 1250.00,
   user: {
+    // Add missing email property as required by UserAccount type
+    email: "joao.silva@example.com",
     name: "João Silva",
     avatar: "https://picsum.photos/seed/joao/200"
   },
