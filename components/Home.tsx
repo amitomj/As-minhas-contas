@@ -54,10 +54,10 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
               <span className="text-[9px] font-black uppercase">Instalar</span>
             </button>
           )}
-          <button onClick={() => setView('settings')} className="h-10 w-10 flex items-center justify-center rounded-xl bg-surface-dark text-gray-400 border border-white/5 active:scale-95 transition-all shadow-lg">
+          <button onClick={() => setView('settings')} className="h-12 w-12 flex items-center justify-center rounded-xl bg-surface-dark text-gray-400 border border-white/5 active:scale-95 transition-all shadow-lg">
             <span className="material-symbols-outlined text-xl">settings</span>
           </button>
-          <button onClick={onLogout} className="h-10 w-10 flex items-center justify-center rounded-xl bg-surface-dark text-red-500 border border-white/5 active:scale-95 transition-all shadow-lg">
+          <button onClick={onLogout} className="h-12 w-12 flex items-center justify-center rounded-xl bg-surface-dark text-red-500 border border-white/5 active:scale-95 transition-all shadow-lg">
             <span className="material-symbols-outlined text-xl">power_settings_new</span>
           </button>
         </div>
@@ -71,7 +71,7 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
           </div>
           <p className="text-[10px] font-black uppercase opacity-60 mb-1 tracking-[0.2em]">Saldo Disponível</p>
           <h1 className="text-4xl font-black mb-8">€{data.balance.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</h1>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center relative z-10">
             <div className="flex -space-x-2">
               {data.members.slice(0, 3).map((m, i) => (
                 <div key={m.id} className="size-10 rounded-xl border-2 border-white bg-bg-dark flex items-center justify-center text-[11px] font-black text-white shadow-md" style={{ zIndex: 10 - i }}>
@@ -84,7 +84,16 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
                 </div>
               )}
             </div>
-            <button onClick={() => setView('stats')} className="px-5 py-3 bg-white/10 backdrop-blur-md rounded-2xl text-[9px] font-black uppercase tracking-widest border border-white/10 active:scale-95 transition-all">Estatísticas</button>
+            <button 
+              onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                setView('stats'); 
+              }} 
+              className="px-6 py-4 bg-white/20 backdrop-blur-lg rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/20 active:scale-90 transition-all cursor-pointer pointer-events-auto"
+            >
+              Estatísticas
+            </button>
           </div>
         </div>
       </div>
@@ -113,11 +122,15 @@ const Home: React.FC<HomeProps> = ({ data, setView, onLogout, onEdit, onDelete, 
       </div>
 
       {/* Recent Transactions Section */}
-      <div className="mt-10 px-8 flex items-center justify-between">
+      <div className="mt-10 px-8 flex items-center justify-between relative z-10">
         <h3 className="text-xl font-black tracking-tight text-white">Atividade</h3>
         <button 
-          onClick={() => { console.log('Ver tudo clicado'); setView('transactions'); }} 
-          className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] bg-secondary/10 px-4 py-2 rounded-xl active:scale-95 transition-all"
+          onClick={(e) => { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            setView('transactions'); 
+          }} 
+          className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] bg-secondary/15 px-5 py-3 rounded-xl active:scale-90 transition-all cursor-pointer pointer-events-auto shadow-lg"
         >
           Ver Tudo
         </button>

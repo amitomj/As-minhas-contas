@@ -80,18 +80,17 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
     };
   }, [expenses, period, members, filterSource, filterMember, startDate, endDate]);
 
-  // Fix: Explicitly cast Object.values to number[] to resolve 'unknown' type errors (lines 83, 84)
   const maxSourceVal = Math.max(...(Object.values(statsData.bySource) as number[]), 1);
   const maxDayVal = Math.max(...(Object.values(statsData.byDay) as number[]), 1);
 
   return (
     <div className="h-full bg-[#050c09] flex flex-col p-4 pb-24 overflow-y-auto no-scrollbar">
       <header className="flex items-center justify-between pt-8 pb-4 shrink-0">
-        <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full bg-[#11291f] border border-white/5">
-          <span className="material-symbols-outlined">arrow_back</span>
+        <button onClick={onBack} className="h-12 w-12 flex items-center justify-center rounded-full bg-[#11291f] border border-white/5 active:scale-90 transition-all">
+          <span className="material-symbols-outlined text-2xl">arrow_back</span>
         </button>
-        <h2 className="text-xl font-black">Análise</h2>
-        <button onClick={() => setShowFilters(!showFilters)} className={`h-10 w-10 flex items-center justify-center rounded-xl border transition-all ${showFilters ? 'bg-primary border-primary text-bg-dark' : 'bg-[#11291f] border-white/5 text-gray-500'}`}>
+        <h2 className="text-xl font-black">Análise Gráfica</h2>
+        <button onClick={() => setShowFilters(!showFilters)} className={`h-12 w-12 flex items-center justify-center rounded-xl border transition-all ${showFilters ? 'bg-primary border-primary text-bg-dark' : 'bg-[#11291f] border-white/5 text-gray-500'}`}>
           <span className="material-symbols-outlined">tune</span>
         </button>
       </header>
@@ -145,7 +144,7 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
         ].map(p => (
           <button 
             key={p.id} onClick={() => setPeriod(p.id as any)}
-            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border shrink-0 transition-all ${period === p.id ? 'bg-primary text-bg-dark border-primary shadow-lg shadow-primary/20' : 'bg-[#11291f] text-gray-500 border-white/5'}`}
+            className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border shrink-0 transition-all active:scale-95 ${period === p.id ? 'bg-primary text-bg-dark border-primary shadow-lg shadow-primary/20' : 'bg-[#11291f] text-gray-500 border-white/5'}`}
           >
             {p.label}
           </button>
@@ -154,12 +153,12 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
 
       <div className="bg-gradient-to-br from-[#11291f] to-[#050c09] rounded-[2.5rem] p-8 border border-white/5 mb-8 shadow-2xl flex justify-between items-end">
         <div className="space-y-1">
-          <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">Total Filtrado</p>
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">Total Analisado</p>
           <h3 className="text-4xl font-black text-white">€{statsData.total.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</h3>
-          <p className="text-[10px] text-primary font-bold">{statsData.count} transações encontradas</p>
+          <p className="text-[10px] text-primary font-bold">{statsData.count} registos</p>
         </div>
         <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-          <span className="material-symbols-outlined text-3xl font-black">payments</span>
+          <span className="material-symbols-outlined text-3xl font-black">analytics</span>
         </div>
       </div>
 
@@ -171,7 +170,7 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
         ].map(t => (
           <button 
             key={t.id} onClick={() => setChartType(t.id as any)}
-            className={`flex flex-col items-center gap-2 py-5 rounded-3xl border transition-all ${chartType === t.id ? 'bg-secondary/20 border-secondary text-secondary scale-105' : 'bg-[#11291f] border-white/5 text-gray-500'}`}
+            className={`flex flex-col items-center gap-2 py-5 rounded-3xl border transition-all active:scale-95 ${chartType === t.id ? 'bg-secondary/20 border-secondary text-secondary scale-105' : 'bg-[#11291f] border-white/5 text-gray-500'}`}
           >
             <span className="material-symbols-outlined text-2xl">{t.icon}</span>
             <span className="text-[9px] font-black tracking-widest">{t.label}</span>
@@ -184,7 +183,7 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
         {statsData.count === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-700 gap-4 opacity-50">
              <span className="material-symbols-outlined text-6xl">query_stats</span>
-             <p className="text-xs font-black uppercase tracking-widest">Sem dados para este filtro</p>
+             <p className="text-xs font-black uppercase tracking-widest">Sem dados no período</p>
           </div>
         ) : (
           <>
@@ -229,7 +228,7 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
                     }, { elements: [] as any[], offset: 25 }).elements}
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center flex-col text-center px-4">
-                    <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest leading-tight">Divisão Família</span>
+                    <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest leading-tight">Membros</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-full max-h-32 overflow-y-auto no-scrollbar">
@@ -259,29 +258,12 @@ const Stats: React.FC<Props> = ({ expenses, members, onBack }) => {
                      </div>
                    ))}
                  </div>
-                 <p className="text-center text-[10px] text-gray-600 mt-10 font-black uppercase tracking-widest">Gastos diários (últimos registos)</p>
+                 <p className="text-center text-[10px] text-gray-600 mt-10 font-black uppercase tracking-widest">Cronologia de Gastos</p>
               </div>
             )}
           </>
         )}
       </div>
-      
-      {statsData.total > 0 && (
-        <div className="p-6 bg-primary/5 border border-primary/20 rounded-[2rem] flex items-center gap-5 animate-in slide-in-from-bottom-4 shadow-xl shadow-primary/5">
-          <div className="size-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shrink-0">
-            <span className="material-symbols-outlined text-2xl">lightbulb</span>
-          </div>
-          <div>
-            <p className="text-[11px] text-primary leading-tight font-medium">
-              O maior foco de gasto atual é <span className="font-bold underline">
-                {(Object.entries(statsData.bySource) as [string, number][]).sort((a,b)=>b[1]-a[1])[0]?.[0].toUpperCase() || '---'}
-              </span>.
-            </p>
-            {/* Fix: Explicitly cast Object.values to number[] to resolve arithmetic operation and type errors (line 279) */}
-            <p className="text-[9px] text-primary/60 mt-1 uppercase font-black tracking-tighter">Representa {(((Object.values(statsData.bySource) as number[]).sort((a,b)=>b-a)[0] || 0) / statsData.total * 100).toFixed(1)}% do total filtrado.</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

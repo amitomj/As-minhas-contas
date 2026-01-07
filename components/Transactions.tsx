@@ -22,24 +22,19 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
   const sources = useMemo(() => Array.from(new Set(expenses.map(e => e.source))), [expenses]);
 
   const filteredExpenses = useMemo(() => {
-    // Garantir que trabalhamos com uma cópia ordenada por data (mais recente primeiro)
     return [...expenses]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .filter(e => {
-        // Busca textual (apenas se houver texto)
         const matchesSearch = !search.trim() || 
                               e.source.toLowerCase().includes(search.toLowerCase()) || 
                               (e.notes || '').toLowerCase().includes(search.toLowerCase());
         
-        // Membro
         const matchesMember = filterMember === 'all' || 
                               e.memberIds.includes(filterMember) || 
                               (filterMember === 'none' && e.memberIds.length === 0);
         
-        // Origem
         const matchesSource = filterSource === 'all' || e.source === filterSource;
         
-        // Datas
         const matchesDateStart = !filterDateStart || e.date >= filterDateStart;
         const matchesDateEnd = !filterDateEnd || e.date <= filterDateEnd;
         
@@ -59,12 +54,12 @@ const Transactions: React.FC<Props> = ({ expenses, members, onBack, onEdit, onDe
       <header className="px-6 pt-12 pb-4 space-y-4 shrink-0 bg-[#050c09]/80 backdrop-blur-md z-10 border-b border-white/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="h-10 w-10 flex items-center justify-center rounded-full bg-[#11291f] border border-white/5">
-              <span className="material-symbols-outlined text-xl">arrow_back</span>
+            <button onClick={onBack} className="h-12 w-12 flex items-center justify-center rounded-full bg-[#11291f] border border-white/5 active:scale-90 transition-all">
+              <span className="material-symbols-outlined text-2xl font-black">arrow_back</span>
             </button>
             <h2 className="text-2xl font-black">Histórico</h2>
           </div>
-          <button onClick={() => setShowFilters(!showFilters)} className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-primary border-primary text-bg-dark' : 'bg-[#11291f] border-white/5 text-gray-500'}`}>
+          <button onClick={() => setShowFilters(!showFilters)} className={`h-12 w-12 flex items-center justify-center rounded-xl border transition-all ${showFilters ? 'bg-primary border-primary text-bg-dark' : 'bg-[#11291f] border-white/5 text-gray-500'}`}>
             <span className="material-symbols-outlined">tune</span>
           </button>
         </div>

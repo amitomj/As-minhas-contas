@@ -19,30 +19,23 @@ const App: React.FC = () => {
   const [initialized, setInitialized] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
 
+  // Inicialização robusta: Começa sempre em 'auth'
   useEffect(() => {
     const savedSession = localStorage.getItem('financas_pro_session');
-    const hasPermission = localStorage.getItem('financas_pro_permission') === 'granted';
     
+    // Mesmo que haja sessão, mostramos Auth primeiro (pode ser o ecrã de PIN)
+    // Se o utilizador quiser que seja automático, a Auth lida com isso se houver PIN
     if (savedSession) {
       try {
         const user = JSON.parse(savedSession);
         setCurrentUser(user);
-        
         const userData = localStorage.getItem(`financas_pro_data_${user.email}`);
         if (userData) {
           setData(JSON.parse(userData));
-          setView(hasPermission ? 'home' : 'permission');
-        } else {
-          const newData = { ...INITIAL_DATA, user };
-          setData(newData);
-          localStorage.setItem(`financas_pro_data_${user.email}`, JSON.stringify(newData));
-          setView('permission');
         }
       } catch (e) {
-        setView('auth');
+        console.error("Erro ao carregar sessão");
       }
-    } else {
-      setView('auth');
     }
     setInitialized(true);
   }, []);
@@ -176,7 +169,7 @@ const App: React.FC = () => {
       </div>
       
       {view !== 'permission' && view !== 'add-expense' && view !== 'auth' && (
-        <nav className="shrink-0 bg-bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-8 pt-3 z-50">
+        <nav className="shrink-0 bg-bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-8 pt-3 z-[60]">
           <div className="flex justify-around items-center px-4">
             <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 transition-colors ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
               <span className={`material-symbols-outlined text-[28px] ${view === 'home' ? 'fill-1' : ''}`}>home</span>
