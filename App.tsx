@@ -134,21 +134,21 @@ const App: React.FC = () => {
       {view !== 'auth' && view !== 'permission' && view !== 'add-expense' && (
         <nav className="shrink-0 bg-bg-dark border-t border-white/5 pb-10 pt-4 z-[999] relative">
           <div className="flex justify-around items-center px-2">
-            <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[30px] font-bold">home</span>
-              <span className="text-[10px] font-bold uppercase">Início</span>
+            <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">home</span>
+              <span className="text-[10px] font-bold uppercase pointer-events-none">Início</span>
             </button>
-            <button onClick={() => setView('transactions')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[30px] font-bold">receipt_long</span>
-              <span className="text-[10px] font-bold uppercase">Extrato</span>
+            <button onClick={() => setView('transactions')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'transactions' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">receipt_long</span>
+              <span className="text-[10px] font-bold uppercase pointer-events-none">Extrato</span>
             </button>
-            <button onClick={() => setView('stats')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[30px] font-bold">monitoring</span>
-              <span className="text-[10px] font-bold uppercase">Gráfico</span>
+            <button onClick={() => setView('stats')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'stats' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">monitoring</span>
+              <span className="text-[10px] font-bold uppercase pointer-events-none">Gráfico</span>
             </button>
-            <button onClick={() => setView('household')} className={`flex flex-col items-center gap-1 flex-1 py-3 ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}>
-              <span className="material-symbols-outlined text-[30px] font-bold">group</span>
-              <span className="text-[10px] font-bold uppercase">Agregado</span>
+            <button onClick={() => setView('household')} className={`flex flex-col items-center gap-1 flex-1 py-4 active:bg-white/5 rounded-xl ${view === 'household' ? 'text-primary' : 'text-gray-500'}`}>
+              <span className="material-symbols-outlined text-[32px] font-bold pointer-events-none">group</span>
+              <span className="text-[10px] font-bold uppercase pointer-events-none">Agregado</span>
             </button>
           </div>
         </nav>

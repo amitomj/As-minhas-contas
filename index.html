@@ -47,14 +47,19 @@
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
             font-family: 'Inter', sans-serif;
+            /* Resolve o atraso de clique no Android */
+            touch-action: manipulation;
         }
         button, a, select, input {
             touch-action: manipulation;
+            min-height: 44px; /* Tamanho mínimo recomendado pela Apple/Google */
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .squircle {
-            border-radius: 20%;
+        
+        /* Garante que elementos de navegação não são "comidos" por gestos do sistema */
+        nav {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
         }
     </style>
     <script type="importmap">
