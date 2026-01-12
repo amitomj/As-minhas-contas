@@ -21,6 +21,18 @@ const App: React.FC = () => {
   const [preSelectedProjectId, setPreSelectedProjectId] = useState<string | undefined>(undefined);
   const [fileHandle, setFileHandle] = useState<any>(null);
 
+  // Helper para salvar no localStorage com segurança
+  const safeStorageSet = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e: any) {
+      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        alert("Aviso: Limite de armazenamento do navegador excedido. Por favor, exporte os seus dados e limpe o histórico nas definições.");
+      }
+      console.error("Storage Error:", e);
+    }
+  };
+
   const handlePCFileAccess = async () => {
     try {
       if ('showOpenFilePicker' in window) {
@@ -51,7 +63,6 @@ const App: React.FC = () => {
           let userData: AppData = JSON.parse(userDataStr);
           const currentMonth = new Date().toISOString().slice(0, 7);
           
-          // Garantir que todos os campos obrigatórios existem
           userData = {
             ...INITIAL_DATA,
             ...userData,
@@ -74,7 +85,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (initialized && currentUser && currentUser.email) {
-      localStorage.setItem(`fin_data_${currentUser.email}`, JSON.stringify(data));
+      safeStorageSet(`fin_data_${currentUser.email}`, JSON.stringify(data));
       if (fileHandle) {
         (async () => {
           try {
@@ -170,8 +181,8 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (user: UserAccount) => {
-    localStorage.setItem('financas_pro_session', JSON.stringify(user));
-    localStorage.setItem('financas_pro_last_email', user.email);
+    safeStorageSet('financas_pro_session', JSON.stringify(user));
+    safeStorageSet('financas_pro_last_email', user.email);
     const userDataStr = localStorage.getItem(`fin_data_${user.email}`);
     if (userDataStr) {
       const parsed = JSON.parse(userDataStr);
@@ -185,11 +196,10 @@ const App: React.FC = () => {
   const updateUser = (u: UserAccount) => {
     setCurrentUser(u);
     setData(prev => ({ ...prev, user: u }));
-    localStorage.setItem('financas_pro_session', JSON.stringify(u));
-    // Sincronizar também no array de utilizadores para login futuro
+    safeStorageSet('financas_pro_session', JSON.stringify(u));
     const storedUsers = JSON.parse(localStorage.getItem('financas_pro_users') || '[]');
     const updatedUsers = storedUsers.map((item: any) => item.email === u.email ? { ...item, ...u } : item);
-    localStorage.setItem('financas_pro_users', JSON.stringify(updatedUsers));
+    safeStorageSet('financas_pro_users', JSON.stringify(updatedUsers));
   };
 
   const renderView = () => {
