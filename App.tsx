@@ -15,7 +15,7 @@ import ProjectsView from './components/Projects';
 const App: React.FC = () => {
   const [view, setView] = useState<View>('auth');
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
-  const [data, setData] = useState<AppData>(INITIAL_DATA);
+  const [data, setData] = useState<AppData>({ ...INITIAL_DATA });
   const [initialized, setInitialized] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const [preSelectedProjectId, setPreSelectedProjectId] = useState<string | undefined>(undefined);
@@ -32,10 +32,12 @@ const App: React.FC = () => {
         const file = await handle.getFile();
         const content = await file.text();
         const parsed = JSON.parse(content);
-        if (parsed.expenses) setData(parsed);
-        alert("Ficheiro sincronizado com sucesso!");
+        if (parsed && typeof parsed === 'object') {
+           setData({ ...INITIAL_DATA, ...parsed });
+           alert("Sincronizado!");
+        }
       }
-    } catch (e) { console.log("Acesso ao ficheiro cancelado."); }
+    } catch (e) { console.log("Acesso cancelado."); }
   };
 
   useEffect(() => {
@@ -48,24 +50,38 @@ const App: React.FC = () => {
         if (userDataStr) {
           let userData: AppData = JSON.parse(userDataStr);
           const currentMonth = new Date().toISOString().slice(0, 7);
+          
+          // Garantir que todos os campos obrigatórios existem
+          userData = {
+            ...INITIAL_DATA,
+            ...userData,
+            sources: userData.sources || INITIAL_DATA.sources,
+            paymentMethods: userData.paymentMethods || INITIAL_DATA.paymentMethods,
+            expenses: userData.expenses || [],
+            members: userData.members || [],
+            projects: userData.projects || []
+          };
+
           if (userData.lastResetMonth !== currentMonth) {
             userData = { ...userData, balance: 0, expenses: [], lastResetMonth: currentMonth };
           }
           setData(userData);
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Session load error", e); }
     }
     setInitialized(true);
   }, []);
 
   useEffect(() => {
-    if (initialized && currentUser) {
+    if (initialized && currentUser && currentUser.email) {
       localStorage.setItem(`fin_data_${currentUser.email}`, JSON.stringify(data));
       if (fileHandle) {
         (async () => {
-          const writable = await fileHandle.createWritable();
-          await writable.write(JSON.stringify(data, null, 2));
-          await writable.close();
+          try {
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(data, null, 2));
+            await writable.close();
+          } catch(e) { console.error("File sync error", e); }
         })();
       }
     }
@@ -76,19 +92,19 @@ const App: React.FC = () => {
       let newExpenses;
       let balanceAdjustment = 0;
       if (editingExpense) {
-        newExpenses = prev.expenses.map(e => {
+        newExpenses = (prev.expenses || []).map(e => {
           if (e.id === editingExpense.id) {
-            balanceAdjustment = editingExpense.amount - expenseData.amount;
-            return { ...expenseData, id: e.id, timestamp: e.timestamp };
+            balanceAdjustment = (editingExpense.amount || 0) - (expenseData.amount || 0);
+            return { ...expenseData, id: e.id, timestamp: e.timestamp || Date.now() };
           }
           return e;
         });
       } else {
         const newExp = { ...expenseData, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() };
-        newExpenses = [newExp, ...prev.expenses];
-        balanceAdjustment = -expenseData.amount;
+        newExpenses = [newExp, ...(prev.expenses || [])];
+        balanceAdjustment = -(expenseData.amount || 0);
       }
-      return { ...prev, expenses: newExpenses, balance: prev.balance + balanceAdjustment };
+      return { ...prev, expenses: newExpenses, balance: (prev.balance || 0) + balanceAdjustment };
     });
     setEditingExpense(undefined);
     setPreSelectedProjectId(undefined);
@@ -97,26 +113,26 @@ const App: React.FC = () => {
 
   const deleteExpense = (id: string) => {
     setData(prev => {
-      const exp = prev.expenses.find(e => e.id === id);
-      return { ...prev, expenses: prev.expenses.filter(e => e.id !== id), balance: prev.balance + (exp?.amount || 0) };
+      const exp = (prev.expenses || []).find(e => e.id === id);
+      return { ...prev, expenses: (prev.expenses || []).filter(e => e.id !== id), balance: (prev.balance || 0) + (exp?.amount || 0) };
     });
   };
 
   const deleteCategory = (name: string, type: 'source' | 'method') => {
     const field = type === 'source' ? 'source' : 'paymentMethod';
-    const related = data.expenses.filter(e => e[field] === name);
+    const related = (data.expenses || []).filter(e => e[field] === name);
     if (related.length > 0) {
       if (confirm(`Existem ${related.length} despesas associadas. Quer reatribuir a "Outros"?`)) {
         setData(prev => ({
           ...prev,
-          [type === 'source' ? 'sources' : 'paymentMethods']: prev[type === 'source' ? 'sources' : 'paymentMethods'].filter(x => x !== name),
-          expenses: prev.expenses.map(e => e[field] === name ? { ...e, [field]: 'Outros' } : e)
+          [type === 'source' ? 'sources' : 'paymentMethods']: (prev[type === 'source' ? 'sources' : 'paymentMethods'] || []).filter(x => x !== name),
+          expenses: (prev.expenses || []).map(e => e[field] === name ? { ...e, [field]: 'Outros' } : e)
         }));
       }
     } else {
       setData(prev => ({
         ...prev,
-        [type === 'source' ? 'sources' : 'paymentMethods']: prev[type === 'source' ? 'sources' : 'paymentMethods'].filter(x => x !== name)
+        [type === 'source' ? 'sources' : 'paymentMethods']: (prev[type === 'source' ? 'sources' : 'paymentMethods'] || []).filter(x => x !== name)
       }));
     }
   };
@@ -125,31 +141,31 @@ const App: React.FC = () => {
     const newProject = { id: Math.random().toString(36).substr(2, 9), name, description, notes };
     setData(prev => ({
       ...prev,
-      projects: [...prev.projects, newProject],
-      sources: prev.sources.some(s => s.toLowerCase() === name.toLowerCase()) ? prev.sources : [...prev.sources, name]
+      projects: [...(prev.projects || []), newProject],
+      sources: (prev.sources || []).some(s => s.toLowerCase() === name.toLowerCase()) ? (prev.sources || []) : [...(prev.sources || []), name]
     }));
   };
 
   const deleteProject = (id: string) => {
-    const related = data.expenses.filter(e => e.projectId === id);
+    const related = (data.expenses || []).filter(e => e.projectId === id);
     if (related.length > 0) {
-      if (confirm(`Existem ${related.length} despesas associadas a este projeto. Quer manter as despesas na conta geral (Sim) ou apagá-las (Não)?`)) {
+      if (confirm(`Existem ${related.length} despesas associadas. Deseja mantê-las na conta geral?`)) {
         setData(prev => ({
           ...prev,
-          projects: prev.projects.filter(p => p.id !== id),
-          expenses: prev.expenses.map(e => e.projectId === id ? { ...e, projectId: undefined } : e)
+          projects: (prev.projects || []).filter(p => p.id !== id),
+          expenses: (prev.expenses || []).map(e => e.projectId === id ? { ...e, projectId: undefined } : e)
         }));
       } else if (confirm("Tem a certeza que quer apagar as despesas deste projeto?")) {
-        const totalRefund = related.reduce((acc, curr) => acc + curr.amount, 0);
+        const totalRefund = related.reduce((acc, curr) => acc + (curr.amount || 0), 0);
         setData(prev => ({
           ...prev,
-          projects: prev.projects.filter(p => p.id !== id),
-          expenses: prev.expenses.filter(e => e.projectId !== id),
-          balance: prev.balance + totalRefund
+          projects: (prev.projects || []).filter(p => p.id !== id),
+          expenses: (prev.expenses || []).filter(e => e.projectId !== id),
+          balance: (prev.balance || 0) + totalRefund
         }));
       }
     } else {
-      setData(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
+      setData(prev => ({ ...prev, projects: (prev.projects || []).filter(p => p.id !== id) }));
     }
   };
 
@@ -158,7 +174,8 @@ const App: React.FC = () => {
     localStorage.setItem('financas_pro_last_email', user.email);
     const userDataStr = localStorage.getItem(`fin_data_${user.email}`);
     if (userDataStr) {
-      setData(JSON.parse(userDataStr));
+      const parsed = JSON.parse(userDataStr);
+      setData({ ...INITIAL_DATA, ...parsed, user });
     } else {
       setData({ ...INITIAL_DATA, user, lastResetMonth: new Date().toISOString().slice(0, 7) });
     }
@@ -169,6 +186,10 @@ const App: React.FC = () => {
     setCurrentUser(u);
     setData(prev => ({ ...prev, user: u }));
     localStorage.setItem('financas_pro_session', JSON.stringify(u));
+    // Sincronizar também no array de utilizadores para login futuro
+    const storedUsers = JSON.parse(localStorage.getItem('financas_pro_users') || '[]');
+    const updatedUsers = storedUsers.map((item: any) => item.email === u.email ? { ...item, ...u } : item);
+    localStorage.setItem('financas_pro_users', JSON.stringify(updatedUsers));
   };
 
   const renderView = () => {
@@ -179,7 +200,7 @@ const App: React.FC = () => {
         <Home 
           data={data} 
           setView={setView} 
-          onLogout={() => setView('auth')} 
+          onLogout={() => { setCurrentUser(null); localStorage.removeItem('financas_pro_session'); setView('auth'); }} 
           onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} 
           onDelete={deleteExpense} 
           onUpdateUser={updateUser} 
@@ -196,10 +217,10 @@ const App: React.FC = () => {
       );
       case 'add-expense': return (
         <AddExpense 
-          sources={data.sources} 
-          members={data.members} 
-          projects={data.projects} 
-          paymentMethods={data.paymentMethods}
+          sources={data.sources || []} 
+          members={data.members || []} 
+          projects={data.projects || []} 
+          paymentMethods={data.paymentMethods || []}
           onSave={saveExpense} 
           onBack={() => { setView('home'); setEditingExpense(undefined); setPreSelectedProjectId(undefined); }} 
           editingExpense={editingExpense}
@@ -213,24 +234,24 @@ const App: React.FC = () => {
           onDeleteProject={deleteProject}
         />
       );
-      case 'household': return <HouseholdManagement members={data.members} onUpdate={(m) => setData(p => ({ ...p, members: m }))} onBack={() => setView('home')} />;
+      case 'household': return <HouseholdManagement members={data.members || []} onUpdate={(m) => setData(p => ({ ...p, members: m }))} onBack={() => setView('home')} />;
       case 'projects': return (
         <ProjectsView 
-          projects={data.projects} 
-          expenses={data.expenses}
+          projects={data.projects || []} 
+          expenses={data.expenses || []}
           onUpdate={(p) => setData(p_prev => ({ ...p_prev, projects: p }))} 
           onDeleteProject={deleteProject}
           onBack={() => setView('home')} 
           onAddExpenseInProject={(pid) => { setPreSelectedProjectId(pid); setView('add-expense'); }}
           onEditExpense={(e) => { setEditingExpense(e); setView('add-expense'); }}
           onDeleteExpense={deleteExpense}
-          members={data.members}
+          members={data.members || []}
           onAddProject={addProject}
         />
       );
-      case 'export': return <ExportData expenses={data.expenses} members={data.members} projects={data.projects} onBack={() => setView('home')} />;
-      case 'stats': return <Stats expenses={data.expenses} members={data.members} onBack={() => setView('home')} />;
-      case 'transactions': return <Transactions expenses={data.expenses} members={data.members} projects={data.projects} onBack={() => setView('home')} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} />;
+      case 'export': return <ExportData expenses={data.expenses || []} members={data.members || []} projects={data.projects || []} onBack={() => setView('home')} />;
+      case 'stats': return <Stats expenses={data.expenses || []} members={data.members || []} onBack={() => setView('home')} />;
+      case 'transactions': return <Transactions expenses={data.expenses || []} members={data.members || []} projects={data.projects || []} onBack={() => setView('home')} onEdit={(e) => { setEditingExpense(e); setView('add-expense'); }} onDelete={deleteExpense} />;
       case 'settings': return <Settings user={data.user} onBack={() => setView('home')} onPCFile={handlePCFileAccess} hasFile={!!fileHandle} />;
       default: return <Home data={data} setView={setView} onLogout={() => setView('auth')} onEdit={()=>{}} onDelete={()=>{}} onUpdateUser={updateUser} onUpdateSources={()=>{}} onDeleteSource={()=>{}} onUpdateMethods={()=>{}} onDeleteMethod={()=>{}} onAddProject={()=>{}} onUpdateProjects={()=>{}} onDeleteProject={()=>{}} deferredPrompt={null} setDeferredPrompt={()=>{}} />;
     }
@@ -240,7 +261,7 @@ const App: React.FC = () => {
     <div className="max-w-md mx-auto h-screen bg-bg-dark overflow-hidden flex flex-col">
       <div className="flex-1 overflow-hidden relative">{renderView()}</div>
       {view !== 'auth' && (
-        <nav className="shrink-0 bg-bg-dark border-t border-white/5 flex justify-around items-center min-h-[75px]">
+        <nav className="shrink-0 bg-bg-dark border-t border-white/5 flex justify-around items-center min-h-[75px] z-[100]">
           <button onClick={() => setView('home')} className={`flex-1 py-4 flex flex-col items-center transition-all ${view === 'home' ? 'text-primary' : 'text-gray-500'}`}>
             <span className="material-symbols-outlined text-2xl font-black">home</span>
             <span className="text-[8px] font-bold uppercase mt-1">Início</span>

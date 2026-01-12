@@ -26,7 +26,7 @@ const CustomSelect: React.FC<{
   options: { label: string; value: string }[];
   onChange: (val: string) => void;
   className?: string;
-}> = ({ value, options, onChange, className }) => {
+}> = ({ value, options = [], onChange, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -45,10 +45,11 @@ const CustomSelect: React.FC<{
   return (
     <div className="relative w-full" ref={containerRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full bg-black border-[4px] border-black rounded-[2.5rem] px-6 py-5 text-sm font-black text-white uppercase tracking-widest flex items-center justify-between shadow-inner ${className}`}
       >
-        <span className="truncate flex-1 text-center">{selectedOption?.label || value}</span>
+        <span className="truncate flex-1 text-center">{selectedOption?.label || (value ? value.toUpperCase() : 'SELECIONAR')}</span>
         <span className="material-symbols-outlined text-primary ml-2">expand_more</span>
       </button>
 
@@ -58,6 +59,7 @@ const CustomSelect: React.FC<{
             {options.map((opt) => (
               <button
                 key={opt.value}
+                type="button"
                 onClick={() => {
                   onChange(opt.value);
                   setIsOpen(false);
@@ -69,6 +71,7 @@ const CustomSelect: React.FC<{
                 {opt.label}
               </button>
             ))}
+            {options.length === 0 && <div className="p-4 text-center text-[10px] text-gray-500 uppercase font-black">Sem opções</div>}
           </div>
         </div>
       )}
@@ -77,20 +80,26 @@ const CustomSelect: React.FC<{
 };
 
 const AddExpense: React.FC<AddExpenseProps> = ({ 
-  sources, paymentMethods, members, projects, onSave, onBack, 
+  sources = [], paymentMethods = [], members = [], projects = [], onSave, onBack, 
   editingExpense, preSelectedProjectId, onUpdateSources, onDeleteSource, 
   onUpdateMethods, onDeleteMethod, onAddProject, onUpdateProjects, onDeleteProject
 }) => {
-  const [amount, setAmount] = useState<string>(editingExpense?.amount.toString() || '');
+  const [amount, setAmount] = useState<string>(editingExpense?.amount?.toString() || '');
   const [date, setDate] = useState<string>(editingExpense?.date || new Date().toISOString().split('T')[0]);
-  const [source, setSource] = useState<string>(editingExpense?.source || (sources[0] || ''));
-  const [paymentMethod, setPaymentMethod] = useState<string>(editingExpense?.paymentMethod || (paymentMethods[0] || ''));
+  const [source, setSource] = useState<string>(editingExpense?.source || (sources?.[0] || ''));
+  const [paymentMethod, setPaymentMethod] = useState<string>(editingExpense?.paymentMethod || (paymentMethods?.[0] || ''));
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(editingExpense?.memberIds || []);
   const [projectId, setProjectId] = useState<string | undefined>(editingExpense?.projectId || preSelectedProjectId);
   const [notes, setNotes] = useState<string>(editingExpense?.notes || '');
   
   const [activeManager, setActiveManager] = useState<'source' | 'method' | 'project' | null>(null);
   const [newItemName, setNewItemName] = useState('');
+
+  // Sincronizar estado inicial caso sources/paymentMethods demorem a carregar
+  useEffect(() => {
+    if (!source && sources && sources.length > 0) setSource(sources[0]);
+    if (!paymentMethod && paymentMethods && paymentMethods.length > 0) setPaymentMethod(paymentMethods[0]);
+  }, [sources, paymentMethods]);
 
   const handleProjectChange = (id: string) => {
     setProjectId(id);
@@ -104,11 +113,14 @@ const AddExpense: React.FC<AddExpenseProps> = ({
 
   const handleSave = () => {
     const val = parseFloat(amount.replace(',', '.'));
-    if (isNaN(val) || !source || !paymentMethod) { alert("Preencha valor, origem e pagamento."); return; }
+    if (isNaN(val) || val <= 0) { alert("Introduza um valor válido."); return; }
+    if (!source) { alert("Selecione uma Origem."); return; }
+    if (!paymentMethod) { alert("Selecione um Meio de Pagamento."); return; }
     onSave({ amount: val, date, source, paymentMethod, memberIds: selectedMemberIds, projectId, notes });
   };
 
   const renderManager = (type: 'source' | 'method' | 'project') => {
+    const list = type === 'source' ? sources : (type === 'method' ? paymentMethods : projects.map(p => p.name));
     return (
       <div className="space-y-4 bg-[#050c09] p-5 rounded-2xl border border-white/5 animate-in fade-in zoom-in-95 duration-200 mt-4 shadow-xl">
         <div className="flex gap-2">
@@ -119,6 +131,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
             className="flex-1 bg-bg-dark border border-white/10 rounded-xl px-4 text-xs h-12 text-white placeholder-white/20 uppercase font-black" 
           />
           <button 
+            type="button"
             onClick={() => { 
               if(!newItemName) return;
               if(type === 'source') onUpdateSources([...sources, newItemName]);
@@ -136,14 +149,14 @@ const AddExpense: React.FC<AddExpenseProps> = ({
             projects.map(p => (
               <div key={p.id} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5">
                 <span className="text-[10px] uppercase font-black text-white/70">{p.name}</span>
-                <button onClick={() => onDeleteProject(p.id)} className="text-red-400 material-symbols-outlined text-sm">delete</button>
+                <button type="button" onClick={() => onDeleteProject(p.id)} className="text-red-400 material-symbols-outlined text-sm">delete</button>
               </div>
             ))
           ) : (
             (type === 'source' ? sources : paymentMethods).map(item => (
               <div key={item} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5">
                 <span className="text-[10px] uppercase font-black text-white/70">{item}</span>
-                <button onClick={() => type === 'source' ? onDeleteSource(item) : onDeleteMethod(item)} className="text-red-400 material-symbols-outlined text-sm">delete</button>
+                <button type="button" onClick={() => type === 'source' ? onDeleteSource(item) : onDeleteMethod(item)} className="text-red-400 material-symbols-outlined text-sm">delete</button>
               </div>
             ))
           )}
@@ -182,6 +195,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
           <div className="flex justify-between items-center px-4">
             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Origem / Loja</span>
             <button 
+              type="button"
               onClick={() => setActiveManager(activeManager === 'source' ? null : 'source')} 
               className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeManager === 'source' ? 'text-primary underline' : 'text-secondary'}`}
             >
@@ -192,7 +206,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
             <CustomSelect 
               value={source} 
               onChange={setSource} 
-              options={sources.map(s => ({ label: s.toUpperCase(), value: s }))} 
+              options={(sources || []).map(s => ({ label: s.toUpperCase(), value: s }))} 
             />
           )}
         </div>
@@ -202,6 +216,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
           <div className="flex justify-between items-center px-4">
             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Meio de Pagamento</span>
             <button 
+              type="button"
               onClick={() => setActiveManager(activeManager === 'method' ? null : 'method')} 
               className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeManager === 'method' ? 'text-primary underline' : 'text-secondary'}`}
             >
@@ -212,7 +227,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
             <CustomSelect 
               value={paymentMethod} 
               onChange={setPaymentMethod} 
-              options={paymentMethods.map(m => ({ label: m.toUpperCase(), value: m }))} 
+              options={(paymentMethods || []).map(m => ({ label: m.toUpperCase(), value: m }))} 
             />
           )}
         </div>
@@ -222,6 +237,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
           <div className="flex justify-between items-center px-4">
             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Projeto (Férias, Obras...)</span>
             <button 
+              type="button"
               onClick={() => setActiveManager(activeManager === 'project' ? null : 'project')} 
               className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeManager === 'project' ? 'text-primary underline' : 'text-secondary'}`}
             >
@@ -234,7 +250,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
               onChange={handleProjectChange} 
               options={[
                 { label: 'NENHUM (CONTA GERAL)', value: '' },
-                ...projects.map(p => ({ label: p.name.toUpperCase(), value: p.id }))
+                ...(projects || []).map(p => ({ label: p.name.toUpperCase(), value: p.id }))
               ]} 
             />
           )}
@@ -249,7 +265,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
                 className="text-[10px] px-2"
                 options={[
                   { label: 'AGREGADO', value: '' },
-                  ...members.map(m => ({ label: m.name.toUpperCase(), value: m.id }))
+                  ...(members || []).map(m => ({ label: m.name.toUpperCase(), value: m.id }))
                 ]} 
               />
            </div>
@@ -280,6 +296,7 @@ const AddExpense: React.FC<AddExpenseProps> = ({
 
       <div className="pb-10">
         <button 
+          type="button"
           onClick={handleSave} 
           className="w-full py-6 bg-primary text-bg-dark font-black rounded-[2.5rem] text-[13px] uppercase tracking-[0.3em] active:scale-95 transition-all shadow-2xl shadow-primary/20 flex items-center justify-center gap-3"
         >
