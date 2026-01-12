@@ -1,136 +1,291 @@
 
-import React, { useState, useCallback } from 'react';
-import { Member, Expense } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Member, Expense, Project } from '../types';
 
 interface AddExpenseProps {
   sources: string[];
+  paymentMethods: string[];
   members: Member[];
-  onSave: (expense: { amount: number, date: string, source: string, memberIds: string[], notes: string }) => void;
+  projects: Project[];
+  onSave: (expense: { amount: number, date: string, source: string, paymentMethod: string, memberIds: string[], projectId?: string, notes: string }) => void;
   onBack: () => void;
   editingExpense?: Expense;
+  preSelectedProjectId?: string;
+  onUpdateSources: (s: string[]) => void;
+  onDeleteSource: (s: string) => void;
+  onUpdateMethods: (m: string[]) => void;
+  onDeleteMethod: (m: string) => void;
+  onAddProject: (name: string, desc?: string, notes?: string) => void;
+  onUpdateProjects: (p: Project[]) => void;
+  onDeleteProject: (id: string) => void;
 }
 
-const AddExpense: React.FC<AddExpenseProps> = ({ sources, members, onSave, onBack, editingExpense }) => {
+const CustomSelect: React.FC<{
+  label?: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (val: string) => void;
+  className?: string;
+}> = ({ value, options, onChange, className }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value);
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full bg-black border-[4px] border-black rounded-[2.5rem] px-6 py-5 text-sm font-black text-white uppercase tracking-widest flex items-center justify-between shadow-inner ${className}`}
+      >
+        <span className="truncate flex-1 text-center">{selectedOption?.label || value}</span>
+        <span className="material-symbols-outlined text-primary ml-2">expand_more</span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-[100] top-full mt-2 w-full bg-black border-[4px] border-black rounded-[2rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="max-h-60 overflow-y-auto no-scrollbar">
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full px-6 py-4 text-xs font-black uppercase tracking-widest text-center transition-colors border-b border-white/5 last:border-none ${
+                  value === opt.value ? 'bg-primary text-bg-dark' : 'text-white hover:bg-white/5'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AddExpense: React.FC<AddExpenseProps> = ({ 
+  sources, paymentMethods, members, projects, onSave, onBack, 
+  editingExpense, preSelectedProjectId, onUpdateSources, onDeleteSource, 
+  onUpdateMethods, onDeleteMethod, onAddProject, onUpdateProjects, onDeleteProject
+}) => {
   const [amount, setAmount] = useState<string>(editingExpense?.amount.toString() || '');
   const [date, setDate] = useState<string>(editingExpense?.date || new Date().toISOString().split('T')[0]);
-  const [source, setSource] = useState<string>(editingExpense?.source || sources[0] || '');
+  const [source, setSource] = useState<string>(editingExpense?.source || (sources[0] || ''));
+  const [paymentMethod, setPaymentMethod] = useState<string>(editingExpense?.paymentMethod || (paymentMethods[0] || ''));
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(editingExpense?.memberIds || []);
-  const [isListening, setIsListening] = useState(false);
-  const [showNewSourceInput, setShowNewSourceInput] = useState(false);
-  const [newSourceName, setNewSourceName] = useState('');
+  const [projectId, setProjectId] = useState<string | undefined>(editingExpense?.projectId || preSelectedProjectId);
+  const [notes, setNotes] = useState<string>(editingExpense?.notes || '');
+  
+  const [activeManager, setActiveManager] = useState<'source' | 'method' | 'project' | null>(null);
+  const [newItemName, setNewItemName] = useState('');
 
-  const handleVoiceInput = useCallback(() => {
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-    if (!SpeechRecognition) { alert("Voz não suportada."); return; }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'pt-PT';
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript.toLowerCase();
-      console.log("VOZ:", transcript);
-      
-      // 1. Valor: Procura números (ex: "vinte e cinco", "25", "25.5")
-      const numMatch = transcript.match(/\d+(?:[,.]\d+)?/);
-      if (numMatch) setAmount(numMatch[0].replace(',', '.'));
-
-      // 2. Data: "hoje", "ontem" ou "dia X"
-      if (transcript.includes('hoje')) {
-        setDate(new Date().toISOString().split('T')[0]);
-      } else if (transcript.includes('ontem')) {
-        const d = new Date(); d.setDate(d.getDate() - 1);
-        setDate(d.toISOString().split('T')[0]);
-      } else {
-        const dayMatch = transcript.match(/dia\s?(\d+)/);
-        if (dayMatch) {
-          const day = dayMatch[1].padStart(2, '0');
-          const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
-          setDate(`${new Date().getFullYear()}-${month}-${day}`);
-        }
+  const handleProjectChange = (id: string) => {
+    setProjectId(id);
+    if (id) {
+      const selectedProj = projects.find(p => p.id === id);
+      if (selectedProj) {
+        setSource(selectedProj.name);
       }
-
-      // 3. Membro: Procura por nomes de membros no texto
-      const foundMembers = members.filter(m => transcript.includes(m.name.toLowerCase().split(' ')[0]));
-      if (foundMembers.length > 0) setSelectedMemberIds(foundMembers.map(m => m.id));
-
-      // 4. Origem
-      const foundSrc = sources.find(s => transcript.includes(s.toLowerCase()));
-      if (foundSrc) { setSource(foundSrc); setShowNewSourceInput(false); }
-    };
-    recognition.start();
-  }, [sources, members]);
+    }
+  };
 
   const handleSave = () => {
     const val = parseFloat(amount.replace(',', '.'));
-    const finalSource = showNewSourceInput ? newSourceName : source;
-    if (isNaN(val) || !finalSource) { alert("Preencha valor e origem."); return; }
-    onSave({ amount: val, date, source: finalSource, memberIds: selectedMemberIds, notes: '' });
+    if (isNaN(val) || !source || !paymentMethod) { alert("Preencha valor, origem e pagamento."); return; }
+    onSave({ amount: val, date, source, paymentMethod, memberIds: selectedMemberIds, projectId, notes });
+  };
+
+  const renderManager = (type: 'source' | 'method' | 'project') => {
+    return (
+      <div className="space-y-4 bg-[#050c09] p-5 rounded-2xl border border-white/5 animate-in fade-in zoom-in-95 duration-200 mt-4 shadow-xl">
+        <div className="flex gap-2">
+          <input 
+            value={newItemName} 
+            onChange={e => setNewItemName(e.target.value)} 
+            placeholder={`Novo ${type === 'project' ? 'projeto' : 'item'}...`} 
+            className="flex-1 bg-bg-dark border border-white/10 rounded-xl px-4 text-xs h-12 text-white placeholder-white/20 uppercase font-black" 
+          />
+          <button 
+            onClick={() => { 
+              if(!newItemName) return;
+              if(type === 'source') onUpdateSources([...sources, newItemName]);
+              else if(type === 'method') onUpdateMethods([...paymentMethods, newItemName]);
+              else onAddProject(newItemName);
+              setNewItemName(''); 
+            }} 
+            className="bg-primary text-bg-dark px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"
+          >
+            ADD
+          </button>
+        </div>
+        <div className="max-h-48 overflow-y-auto space-y-2 no-scrollbar">
+          {type === 'project' ? (
+            projects.map(p => (
+              <div key={p.id} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5">
+                <span className="text-[10px] uppercase font-black text-white/70">{p.name}</span>
+                <button onClick={() => onDeleteProject(p.id)} className="text-red-400 material-symbols-outlined text-sm">delete</button>
+              </div>
+            ))
+          ) : (
+            (type === 'source' ? sources : paymentMethods).map(item => (
+              <div key={item} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5">
+                <span className="text-[10px] uppercase font-black text-white/70">{item}</span>
+                <button onClick={() => type === 'source' ? onDeleteSource(item) : onDeleteMethod(item)} className="text-red-400 material-symbols-outlined text-sm">delete</button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="h-full bg-bg-dark flex flex-col p-4 overflow-y-auto pb-32">
-      <header className="flex items-center justify-between pt-8 pb-4">
-        <button onClick={onBack} className="h-14 w-14 flex items-center justify-center rounded-full bg-surface-dark btn-active">
-          <span className="material-symbols-outlined">arrow_back</span>
+    <div className="h-full bg-bg-dark flex flex-col px-6 overflow-y-auto pb-40 no-scrollbar">
+      <header className="flex items-center justify-between pt-12 pb-8 shrink-0 relative">
+        <button onClick={onBack} className="h-12 w-12 flex items-center justify-center rounded-full bg-[#11291f] border border-white/5 active:scale-90 transition-all">
+          <span className="material-symbols-outlined font-black text-white">arrow_back</span>
         </button>
-        <h2 className="font-bold">Registar Gasto</h2>
-        <button onClick={handleSave} className="bg-primary text-bg-dark font-black px-6 py-3 rounded-full btn-active">OK</button>
+        <h2 className="font-black text-lg text-white absolute left-1/2 -translate-x-1/2">Registar Gasto</h2>
+        <div className="w-12"></div>
       </header>
 
-      <div className="flex-1 space-y-8 pt-10">
-        <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center py-4">
+        <div className="flex flex-col items-center">
           <input 
-            type="number" inputMode="decimal" value={amount} 
+            type="number" 
+            inputMode="decimal" 
+            value={amount} 
             onChange={e => setAmount(e.target.value)} 
             placeholder="0.00" 
-            className="bg-transparent text-6xl font-black w-full text-center border-none focus:ring-0 text-white" 
+            className="bg-transparent text-[84px] font-black w-full text-center text-white/20 border-none focus:ring-0 placeholder-white/5 caret-primary focus:text-white transition-all leading-none" 
           />
-          <button 
-            onClick={handleVoiceInput} 
-            className={`h-20 w-20 rounded-full flex items-center justify-center shadow-2xl ${isListening ? 'bg-red-500 animate-pulse' : 'bg-primary text-bg-dark'}`}
-          >
-            <span className="material-symbols-outlined text-4xl">{isListening ? 'graphic_eq' : 'mic'}</span>
-          </button>
+          <span className="text-primary font-black text-sm tracking-[0.4em] uppercase mt-2">EUR</span>
+        </div>
+      </div>
+
+      <div className="bg-[#11291f]/50 rounded-[3rem] p-8 border border-white/5 space-y-6 backdrop-blur-sm mb-10">
+        {/* ORIGEM */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center px-4">
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Origem / Loja</span>
+            <button 
+              onClick={() => setActiveManager(activeManager === 'source' ? null : 'source')} 
+              className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeManager === 'source' ? 'text-primary underline' : 'text-secondary'}`}
+            >
+              {activeManager === 'source' ? 'TERMINAR' : 'GERIR'}
+            </button>
+          </div>
+          {activeManager === 'source' ? renderManager('source') : (
+            <CustomSelect 
+              value={source} 
+              onChange={setSource} 
+              options={sources.map(s => ({ label: s.toUpperCase(), value: s }))} 
+            />
+          )}
         </div>
 
-        <div className="bg-surface-dark rounded-[2.5rem] p-8 border border-white/5 space-y-8">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-bold">Data</span>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent border-none text-right text-gray-400 font-bold" />
+        {/* TIPO PAGAMENTO */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center px-4">
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Meio de Pagamento</span>
+            <button 
+              onClick={() => setActiveManager(activeManager === 'method' ? null : 'method')} 
+              className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeManager === 'method' ? 'text-primary underline' : 'text-secondary'}`}
+            >
+              {activeManager === 'method' ? 'TERMINAR' : 'GERIR'}
+            </button>
           </div>
+          {activeManager === 'method' ? renderManager('method') : (
+            <CustomSelect 
+              value={paymentMethod} 
+              onChange={setPaymentMethod} 
+              options={paymentMethods.map(m => ({ label: m.toUpperCase(), value: m }))} 
+            />
+          )}
+        </div>
 
-          <div className="space-y-4">
-            <div className="flex justify-between">
-              <span className="text-sm font-bold">Origem</span>
-              <button onClick={() => setShowNewSourceInput(!showNewSourceInput)} className="text-secondary text-[10px] font-black uppercase">Nova</button>
-            </div>
-            {showNewSourceInput ? (
-              <input type="text" value={newSourceName} onChange={e => setNewSourceName(e.target.value)} placeholder="Loja..." className="w-full bg-bg-dark border border-white/10 rounded-2xl p-4 text-white" />
-            ) : (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
-                {sources.map(s => (
-                  <button key={s} onClick={() => setSource(s)} className={`px-5 py-3 rounded-2xl text-[10px] font-black border shrink-0 ${source === s ? 'bg-primary text-bg-dark' : 'bg-bg-dark border-white/5 text-gray-500'}`}>
-                    {s.toUpperCase()}
-                  </button>
-                ))}
+        {/* PROJETO */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center px-4">
+            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Projeto (Férias, Obras...)</span>
+            <button 
+              onClick={() => setActiveManager(activeManager === 'project' ? null : 'project')} 
+              className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeManager === 'project' ? 'text-primary underline' : 'text-secondary'}`}
+            >
+              {activeManager === 'project' ? 'TERMINAR' : 'NOVO'}
+            </button>
+          </div>
+          {activeManager === 'project' ? renderManager('project') : (
+            <CustomSelect 
+              value={projectId || ''} 
+              onChange={handleProjectChange} 
+              options={[
+                { label: 'NENHUM (CONTA GERAL)', value: '' },
+                ...projects.map(p => ({ label: p.name.toUpperCase(), value: p.id }))
+              ]} 
+            />
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 pt-4">
+           <div className="space-y-3">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-4">Membro</span>
+              <CustomSelect 
+                value={selectedMemberIds[0] || ''} 
+                onChange={(val) => setSelectedMemberIds(val ? [val] : [])} 
+                className="text-[10px] px-2"
+                options={[
+                  { label: 'AGREGADO', value: '' },
+                  ...members.map(m => ({ label: m.name.toUpperCase(), value: m.id }))
+                ]} 
+              />
+           </div>
+           <div className="space-y-3">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-4">Data</span>
+              <div className="relative">
+                <input 
+                  type="date" 
+                  value={date} 
+                  onChange={e => setDate(e.target.value)} 
+                  className="w-full bg-black border-[4px] border-black rounded-[2.5rem] px-4 py-5 text-[10px] font-black text-white uppercase tracking-widest focus:ring-2 focus:ring-primary/20 transition-all shadow-inner text-center appearance-none" 
+                />
               </div>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <span className="text-sm font-bold">Atribuir a:</span>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setSelectedMemberIds([])} className={`py-4 rounded-2xl text-[10px] font-bold border ${selectedMemberIds.length === 0 ? 'bg-primary/20 border-primary text-primary' : 'border-white/5 text-gray-500'}`}>AGREGADO</button>
-              {members.map(m => (
-                <button key={m.id} onClick={() => setSelectedMemberIds([m.id])} className={`py-4 rounded-2xl text-[10px] font-bold border truncate ${selectedMemberIds.includes(m.id) ? 'bg-primary/20 border-primary text-primary' : 'border-white/5 text-gray-500'}`}>
-                  {m.name.split(' ')[0].toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
+           </div>
         </div>
+
+        {/* NOTAS */}
+        <div className="space-y-3 pt-2">
+          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-4">Notas / Detalhes</span>
+          <textarea 
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Observações importantes..."
+            className="w-full bg-black border-[4px] border-black rounded-[2.5rem] px-6 py-5 text-sm font-black text-white uppercase tracking-widest focus:ring-2 focus:ring-primary/20 transition-all shadow-inner min-h-[120px] no-scrollbar placeholder-white/10"
+          />
+        </div>
+      </div>
+
+      <div className="pb-10">
+        <button 
+          onClick={handleSave} 
+          className="w-full py-6 bg-primary text-bg-dark font-black rounded-[2.5rem] text-[13px] uppercase tracking-[0.3em] active:scale-95 transition-all shadow-2xl shadow-primary/20 flex items-center justify-center gap-3"
+        >
+          <span className="material-symbols-outlined font-black">check_circle</span>
+          SALVAR GASTO
+        </button>
       </div>
     </div>
   );

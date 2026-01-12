@@ -9,7 +9,9 @@ export const INITIAL_DATA: AppData = {
     avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=finpro"
   },
   members: [],
-  sources: ['Dinheiro', 'Cartão'],
+  projects: [],
+  sources: ['Comida', 'Gasóleo', 'Reparações', 'Lazer'],
+  paymentMethods: ['Dinheiro', 'Transferência', 'Cartão Débito', 'Cartão Crédito'],
   expenses: [],
-  lastResetMonth: new Date().toISOString().slice(0, 7) // Inicializa com o mês atual
+  lastResetMonth: new Date().toISOString().slice(0, 7)
 };
